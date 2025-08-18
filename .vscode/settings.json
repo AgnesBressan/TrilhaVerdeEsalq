@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/agnes29/Documents/trilha_verde_esalq/linux"
+    "cmake.sourceDirectory": "/home/agnes29/Documents/trilha_verde_esalq/linux",
+    "java.configuration.updateBuildConfiguration": "automatic"
 }
