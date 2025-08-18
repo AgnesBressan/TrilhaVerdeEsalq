@@ -1,0 +1,9 @@
+build/
+**/build/
+*.apk
+*.aab
+*.ipa
+*.so
+.dart_tool/
+.packages
+.melos_tool/

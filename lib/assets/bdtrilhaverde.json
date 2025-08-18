@@ -1,0 +1,243 @@
+{
+    "Árvores Úteis": {
+        "4850": {
+            "id": "ut02",
+            "arvore": "Eritrina",
+            "especie": "Erythrina velutina Willd.",
+            "sequencia": 1,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre a Eritrina, escolha a alternativa incorreta:",
+                    "alternativas": {
+                        "A": "Seu tronco e ramos possuem muitos acúleos, estruturas parecidas com espinhos, que se destacam facilmente.",
+                        "B": "Suas folhas são compostas por três folíolos (pequenas “folhinhas”) e cobertas de tomento (camada de pelos finos e macios).",
+                        "C": "Seus frutos são vermelhos e têm forma de vagem.",
+                        "D": "Sua madeira branca é pouco resistente ao ataque de decompositores.",
+                        "E": "Suas folhas são simples, ou seja, não possuem folíolos."
+                    },
+                    "resposta_correta": "Suas folhas são simples, ou seja, não possuem folíolos."
+                }
+            ]
+        },
+        "5433": {
+            "id": "ut03",
+            "arvore": "Pau-Jacaré",
+            "especie": "Piptadenia gonoacantha (Mart.) J. F. Macbr.",
+            "sequencia": 2,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre o Pau-Jacaré, escolha a alternativa incorreta:",
+                    "alternativas": {
+                        "A": "São mais comuns em áreas luminosas e descobertas.",
+                        "B": "Sua madeira é moderadamente pesada e dura para o corte.",
+                        "C": "Sua madeira é utilizada como lenha e carvão, sendo considerada uma das melhores para produção de calor.",
+                        "D": "É utilizada na recuperação de áreas degradadas.",
+                        "E": "Possui de 8 a 20m de altura."
+                    },
+                    "resposta_correta": "São mais comuns em áreas luminosas e descobertas."
+                }
+            ]
+        },
+        "3957": {
+            "id": "ut05",
+            "arvore": "Cambará",
+            "especie": "Gochnatia polymorpha (Less.) Cabrera",
+            "sequencia": 3,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre o Cambará, escolha a alternativa correta:",
+                    "alternativas": {
+                        "A": "Sua madeira, usada na produção de ferramentas e artefatos de uso doméstico, é leve e pouco resistente ao apodrecimento.",
+                        "B": "Essa árvore não possui valor medicinal.",
+                        "C": "A espécie possui alto valor madeireiro em razão da tortuosidade de seu tronco.",
+                        "D": "Possui aplicações na medicina popular, como expectorante  e emoliente.",
+                        "E": "Suas flores branco-amareladas aparecem isoladas."
+                    },
+                    "resposta_correta": "Possui aplicações na medicina popular, como expectorante  e emoliente."
+                }
+            ]
+        },
+        "4": {
+            "id": "ut08",
+            "arvore": "Ipê-Amarelo",
+            "especie": "Tabebuia chrysotricha (Mart ex A. DC.) Standl.",
+            "sequencia": 4,
+            "perguntas": [
+                {
+                    "pergunta": "Escolha a alternativa correta sobre o Ipê-Amarelo (Tabebuia chrysotricha):",
+                    "alternativas": {
+                        "A": "Suas folhas são compostas por 6 folíolos (pequenas “folhinhas”) oblongos, que medem até 8 cm de comprimento.",
+                        "B": "Possui inflorescências com flores de corola azul.",
+                        "C": "Possui madeira acinzentada, dura e pouco resistente ao tempo.",
+                        "D": "Sua madeira é usada em vigas e assoalhos.",
+                        "E": "Essa árvore possui cerca de 20 metros de altura."
+                    },
+                    "resposta_correta": "Sua madeira é usada em vigas e assoalhos."
+                }
+            ]
+        },
+        "3994": {
+            "id": "ut10",
+            "arvore": "Chuva-de-Ouro",
+            "especie": "Lophantera lactescens Ducke.",
+            "sequencia": 5,
+            "perguntas": [
+                {
+                    "pergunta": "Escolha a alternativa incorreta sobre a Chuva-de-Ouro:",
+                    "alternativas": {
+                        "A": "Suas flores amarelas são agrupadas em inflorescências longas, de cerca de 50 cm de comprimento.",
+                        "B": "Normalmente, ocorre em solos de baixa umidade.",
+                        "C": "Característica das florestas ombrófilas da região Amazônica.",
+                        "D": "Empregada em obras internas, como vigas, caibros e forros.",
+                        "E": "Sua madeira é pouco resistente aos insetos da madeira."
+                    },
+                    "resposta_correta": "Normalmente, ocorre em solos de baixa umidade."
+                }
+            ]
+        },
+        "4040": {
+            "id": "ut13",
+            "arvore": "Abricó-de-Macaco",
+            "especie": "Couroupita guianensis Aubl.",
+            "sequencia": 6,
+            "perguntas": [
+                {
+                    "pergunta": "Quais das seguintes alternativas não contém um dos usos dessa árvore?",
+                    "alternativas": {
+                        "A": "Sua madeira, macia, leve e pouco durável é usada na fabricação de embalagens e artefatos leves.",
+                        "B": "Pode ser usada para a fabricação de folhas de madeira, utilizada para cobrir superfícies e dar-lhes uma aparência de madeira maciça.",
+                        "C": "Devido a sua beleza durante o florescimento, é excelente para o paisagismo.",
+                        "D": "Seus frutos de polpa azulada possuem  sementes comestíveis.",
+                        "E": "Pode ser utilizada em vigas na construção de casas."
+                    },
+                    "resposta_correta": "Pode ser utilizada em vigas na construção de casas."
+                }
+            ]
+        },
+        "593": {
+            "id": "ut17",
+            "arvore": "Ipê-Branco",
+            "especie": "Tabebua roseo-alba (Rdl.) Sandw.",
+            "sequencia": 7,
+            "perguntas": [
+                {
+                    "pergunta": "Qual das seguintes alternativas sobre o Ipê-Branco (Handroanthus roseo-albus) está incorreta?",
+                    "alternativas": {
+                        "A": "A madeira do Ipê-Branco é moderadamente pesada e macia, com ótima durabilidade, sendo utilizada em assoalhos e vigas, na construção naval e em obras externas.",
+                        "B": "Suas sementes são aladas, ou seja,  possuem estruturas aerodinâmicas que as ajudam a se espalhar com o vento.",
+                        "C": "Seus frutos são cápsulas arredondadas, longas e finas, contendo numerosas sementes aladas.",
+                        "D": "As flores do Ipê-Branco são pequenas e de cor amarela vibrante.",
+                        "E": "Essa árvore se apresenta exuberante durante sua floração, sendo muito usada na arborização de ruas e avenidas."
+                    },
+                    "resposta_correta": "As flores do Ipê-Branco são pequenas e de cor amarela vibrante."
+                },
+                {
+                    "pergunta": "Sobre o Imbiruçu, escolha a alternativa incorreta: ",
+                    "alternativas": {
+                        "A": "Suas sementes são cobertas por pelos brancos bem compridos.",
+                        "B": "Suas flores podem aparecer sozinhas ou em grupos chamados de cimeiras.",
+                        "C": "Seus troncos são um pouco tortos e ficam mais grossos na base.",
+                        "D": "Seus frutos são cobertos por pelos brancos bem compridos.",
+                        "E": "Seus frutos são secos e, quando amadurecem, se abrem para soltar as sementes."
+                    },
+                    "resposta_correta": "Seus frutos são cobertos por pelos brancos bem compridos."
+                }
+            ]
+        },
+        "1345": {
+            "id": "ut18",
+            "arvore": "Jequitibá-Rosa",
+            "especie": "Cariniana legalis (Mart.) Kuntze",
+            "sequencia": 8,
+            "perguntas": [
+                {
+                    "pergunta": "Escolha a alternativa incorreta sobre o Jequitibá-Rosa:",
+                    "alternativas": {
+                        "A": "Escolha a alternativa incorreta sobre o Jequitibá-Rosa:",
+                        "B": "Suas flores estão juntas em um tipo de inflorescência chamada de racemo.",
+                        "C": "A madeira de sua árvore têm superfície lisa e lustrosa.",
+                        "D": "A madeira do jequitibá-rosa pode ser utilizada para construção civil e confecção de brinquedos.",
+                        "E": "Em sua casca, há substâncias chamadas de tanino, usadas na manufatura de couro."
+                    },
+                    "resposta_correta": "A madeira de sua árvore têm superfície lisa e lustrosa."
+                }
+            ]
+        },
+        "1297": {
+            "id": "ut19",
+            "arvore": "Coração-de-Negro",
+            "especie": "Poecilanthe parviflora Benth.",
+            "sequencia": 9,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre a árvore coração-de-negro, escolha a alternativa correta:",
+                    "alternativas": {
+                        "A": "Sua madeira é muito leve e pouco resistente ao ataque de cupins.",
+                        "B": "Sua folhagem é perene, e permanece durante o ano todo.",
+                        "C": "Atinge até 5 metros de altura.",
+                        "D": "O fruto dessa árvore apresenta várias sementes.",
+                        "E": "Possui flores amarelas de 7cm ou mais de comprimento."
+                    },
+                    "resposta_correta": "Sua folhagem é perene, e permanece durante o ano todo."
+                }
+            ]
+        },
+        "1367": {
+            "id": "ut20",
+            "arvore": "Seringueira",
+            "especie": "Hevea brasiliensis (Kuth) Müll. Arg.",
+            "sequencia": 10,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre a seringueira, escolha a alternativa incorreta",
+                    "alternativas": {
+                        "A": "Suas folhas são compostas por outras três “folhinhas” (trifoliadas).",
+                        "B": "Produz uma madeira branca de baixa durabilidade.",
+                        "C": "Seu nome vem do uso de seringas para tirar o látex e fazer borracha.",
+                        "D": "Também é conhecida por árvore-da-seringa.",
+                        "E": "Os povos indígenas já conheciam e utilizavam essa planta antes da chegada dos colonizadores."
+                    },
+                    "resposta_correta": "Também é conhecida por árvore-da-seringa."
+                }
+            ]
+        },
+        "1362": {
+            "id": "ut25",
+            "arvore": "Escovinha",
+            "especie": "Melaleuca leucadenddron L.",
+            "sequencia": 11,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre a escovinha, escolha a alternativa correta: ",
+                    "alternativas": {
+                        "A": "Suas flores são brancas ou amarelas e aparecem nas pontas dos galhos.",
+                        "B": "Suas flores têm fios amarelos brilhantes.",
+                        "C": "A casca do tronco é preta na parte de baixo.",
+                        "D": "Ela não pode ser usada para fazer mel.",
+                        "E": "Ela não cresce bem em lugares úmidos ou com brejo. "
+                    },
+                    "resposta_correta": "Suas flores são brancas ou amarelas e aparecem nas pontas dos galhos."
+                }
+            ]
+        },
+        "3990": {
+            "id": "ut26",
+            "arvore": "Flor-de-Abril",
+            "especie": "Dillenia indica L.",
+            "sequencia": 12,
+            "perguntas": [
+                {
+                    "pergunta": "Sobre a árvore flor-de-abril, escolha a alternativa incorreta: ",
+                    "alternativas": {
+                        "A": "Seus frutos contêm 10 sementes.",
+                        "B": "Sua madeira é própria para construção naval, sendo usada em obras imersas na água.",
+                        "C": "Embora tenha esse nome, a árvore Flor-de-Abril começa a produzir frutos, e não flores, em Abril.",
+                        "D": "A casca da Flor-de-Abril possui substâncias naturais chamadas de taninos que servem para a produção de couro.",
+                        "E": "As sépalas de sua flor podem ser utilizadas como tempero."
+                    },
+                    "resposta_correta": "Seus frutos contêm 10 sementes."
+                }
+            ]
+        }
+    }
+}
