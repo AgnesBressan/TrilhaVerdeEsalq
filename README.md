@@ -9,7 +9,6 @@ Ao escanear os QR Codes, o usuário desbloqueia informações, curiosidades e at
 
 ## ✨ Funcionalidades
 - 📷 Leitura de **QR Codes** em pontos de interesse.  
-- 🃏 Desbloqueio de **cartas digitais colecionáveis**.  
 - 🏆 Sistema de **pontuação** e **troféus**.  
 - 🗺️ **Mapa interativo** para guiar o usuário pela trilha.  
 - 🌱 Foco em **educação ambiental** e **aprendizado gamificado**.  
@@ -23,8 +22,7 @@ Promover a conscientização ambiental de forma divertida, interativa e acessív
 
 ## 🚀 Tecnologias Utilizadas
 - **Flutter** (desenvolvimento multiplataforma)  
-- **Dart**  
-- **Firebase** (autenticação e armazenamento de dados)  
+- **Dart**
 - **Camera/QR Code Scanner**  
 
 ---
