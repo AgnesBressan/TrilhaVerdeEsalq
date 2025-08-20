@@ -97,7 +97,7 @@ class _TelaLoginState extends State<TelaLogin> {
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _onLogin(),
                           decoration: InputDecoration(
-                            hintText: 'Seu apelido',
+                            hintText: 'Seu nickname',
                             filled: true,
                             fillColor: Colors.white,
                             contentPadding: const EdgeInsets.symmetric(

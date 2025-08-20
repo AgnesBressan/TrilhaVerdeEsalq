@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'tela_perfil.dart'; // ajuste conforme seu projeto
+import '../theme/app_colors.dart';
+import '../widgets/app_button.dart';
+import '../widgets/bottom_nav.dart';
 
 class TelaPrincipal extends StatefulWidget {
   const TelaPrincipal({super.key});
@@ -11,9 +13,8 @@ class TelaPrincipal extends StatefulWidget {
 }
 
 class _TelaPrincipalState extends State<TelaPrincipal> {
-  String nomeUsuario = 'usuário';
+  String nomeUsuario = 'Usuário';
   File? imagemPerfil;
-  String mainImage = 'lib/assets/img/icone_mapa.png'; // Default image
 
   @override
   void initState() {
@@ -23,12 +24,21 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
 
   Future<void> carregarDados() async {
     final prefs = await SharedPreferences.getInstance();
+    final ultimo = prefs.getString('ultimo_usuario');
+    final nome = prefs.getString('nome_usuario');
 
-    final nome = prefs.getString('nome_usuario') ?? 'usuário';
-    final caminhoImagem = prefs.getString('imagem_perfil_$nome');
+    // usa o último usuário conhecido (nickname) como saudação
+    final display = (ultimo?.trim().isNotEmpty ?? false)
+        ? ultimo!.trim()
+        : (nome?.trim().isNotEmpty ?? false)
+            ? nome!.trim()
+            : 'Usuário';
+
+    // tentativa de avatar salvo por nome (se existir no seu fluxo)
+    final caminhoImagem = prefs.getString('imagem_perfil_$display');
 
     setState(() {
-      nomeUsuario = nome;
+      nomeUsuario = display;
       if (caminhoImagem != null && File(caminhoImagem).existsSync()) {
         imagemPerfil = File(caminhoImagem);
       } else {
@@ -39,126 +49,154 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
 
   @override
   Widget build(BuildContext context) {
-    final double larguraTela = MediaQuery.of(context).size.width;
+    final w = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF90E0D4),
-        elevation: 0,
-        toolbarHeight: 100,
-        title: Image.asset('lib/assets/img/logo.png', height: 50),
-        centerTitle: false,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
-            onPressed: () {
-              Navigator.pushNamed(context, '/menu');
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Linha com o avatar clicável e boas-vindas
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Bem vindo, $nomeUsuario!',
-                  style: const TextStyle(fontSize: 18),
+      backgroundColor: AppColors.bg,
+      bottomNavigationBar: const BottomNav(current: BottomTab.home),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TÍTULO
+              const Text(
+                'Trilha Verde',
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.principal_title,
+                  height: 1.05,
                 ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => TelaPerfil()),
-                    ).then((_) {
-                      if (context.mounted) carregarDados();
-                    });
-                  },
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundImage: imagemPerfil != null
-                        ? FileImage(imagemPerfil!)
-                        : const AssetImage('lib/assets/img/icone_avatar.png') as ImageProvider,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            const Text(
-              'Trilha Verde',
-              style: TextStyle(
-                fontSize: 24,
-                color: Colors.redAccent,
-                fontWeight: FontWeight.bold,
               ),
-            ),
+              const SizedBox(height: 8),
 
-            const SizedBox(height: 24),
-
-            // Mapa com largura limitada
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/mapa');
-              },
-              child: Container(
-                width: 400,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 4),
+              // SAUDAÇÃO
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.black87,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Olá, ', style: TextStyle(color: AppColors.explorer)),
+                    TextSpan(
+                      text: '$nomeUsuario!',
+                      style: const TextStyle(
+                        color: AppColors.explorer, // verde
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: Image.asset(mainImage, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 20),
+
+              // TEXTO "PREPARADO..."
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Preparado para conhecer a',
+                    style: TextStyle(
+                      color: AppColors.preparedText, // #EBA937
+                      fontSize: 18,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Trilha das Árvores Úteis?',
+                    style: TextStyle(
+                      color: AppColors.preparedText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+              // BOTÃO "COMO JOGAR?"
+              Center(
+                child: SizedBox(
+                  child: AppButton(
+                    label: 'COMO JOGAR?',
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tutorial em breve 👀')),
+                      );
+                    },
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 50),
 
-            const SizedBox(height: 24),
+              // BALÃO + MASCOTE
+              SizedBox(
+                height: 250,
+                width: double.infinity,
+                child: Stack(
+                  children: [
+                    // Balão à direita
+                    Positioned(
+                      top: 10,
+                      right: 3,
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: w * 0.62),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: const BoxDecoration(
+                          color: AppColors.speechBg32, // #A7C957 com 32%
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                            bottomRight: Radius.circular(20),
+                            bottomLeft: Radius.zero,    // << canto inferior ESQUERDO sem raio
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,   // garante o corte no canto “quadrado”
+                        child: const Text(
+                          'Clique para abrir o mapa\n'
+                          'e começar a aventura!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.loginBg,        // (opcional) fica mais legível no balão
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
 
-            const Text(
-              'Leia um QR Code de uma árvore\npara iniciar o jogo!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
-            ),
+                    // Mascote à esquerda
+                    Positioned(
+                      left: 0,
+                      bottom: 0,
+                      child: Image.asset(
+                        'lib/assets/img/falando.png',
+                        width: 170,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 8),
 
-            // QR Code clicável
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/qrcode');
-              },
-              child: SizedBox(
-                width: larguraTela * 0.25,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset(
-                    'lib/assets/img/icone_qrcode.png',
-                    fit: BoxFit.contain,
+              // BOTÃO "ABRIR O MAPA"
+              Center(
+                child: SizedBox(
+                  child: AppButton(
+                    label: 'ABRIR O MAPA',
+                    onPressed: () => Navigator.pushNamed(context, '/mapa'),
                   ),
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

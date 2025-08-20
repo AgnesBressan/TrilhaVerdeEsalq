@@ -210,7 +210,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                             child: HomeActionButton(
                               label:
                                   _saving ? 'CADASTRANDO...' : 'CADASTRAR',
-                              background: AppColors.cadastroBg,
+                              background: AppColors.explorer,
                               textColor: Colors.black87,
                               onPressed: _saving ? () {} : _onCadastrar,
                               height: 52,

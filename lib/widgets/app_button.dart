@@ -9,21 +9,25 @@ class AppButton extends StatefulWidget {
   final double radius;
   final double? width;
   final double? height;
-  final bool haptics;               // vibração leve
-  final double pressedScale;        // escala quando pressionado
+  final bool haptics;
+  final double pressedScale;
   final Duration animDuration;
+
+  // ⬇️ Novo: permite customizar o estilo do texto (ex: fontSize)
+  final TextStyle? textStyle;
 
   const AppButton({
     super.key,
     required this.label,
     required this.onPressed,
-    this.padding = const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-    this.radius = 20,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    this.radius = 18,
     this.width,
     this.height,
     this.haptics = true,
     this.pressedScale = 0.96,
     this.animDuration = const Duration(milliseconds: 90),
+    this.textStyle,
   });
 
   @override
@@ -56,25 +60,24 @@ class _AppButtonState extends State<AppButton> {
         }),
         elevation: MaterialStateProperty.resolveWith(
             (states) => states.contains(MaterialState.pressed) ? 1 : 4),
-        shadowColor:
-            const MaterialStatePropertyAll(Colors.black54),
+        shadowColor: const MaterialStatePropertyAll(Colors.black54),
         padding: MaterialStatePropertyAll(widget.padding),
         shape: MaterialStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(widget.radius),
           ),
         ),
-        overlayColor:
-            MaterialStatePropertyAll(Colors.white.withOpacity(0.08)),
+        overlayColor: MaterialStatePropertyAll(Colors.white.withOpacity(0.08)),
       ),
       child: Text(
         widget.label,
+        // estilo base + sobrescrita opcional
         style: const TextStyle(
           color: AppColors.buttonText,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
-          letterSpacing: 1,
-        ),
+          letterSpacing: 0.5,
+        ).merge(widget.textStyle),
       ),
     );
 
@@ -86,7 +89,6 @@ class _AppButtonState extends State<AppButton> {
     );
 
     final wrapped = Listener(
-      // não interfere no onPressed do ElevatedButton
       onPointerDown: (_) => _setPressed(true),
       onPointerUp: (_) => _setPressed(false),
       onPointerCancel: (_) => _setPressed(false),

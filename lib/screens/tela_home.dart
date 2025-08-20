@@ -97,7 +97,7 @@ class TelaHome extends StatelessWidget {
                     // Botão CADASTRO (largo/alto)
                     HomeActionButton(
                       label: 'CADASTRO',
-                      background: AppColors.cadastroBg,
+                      background: AppColors.explorer,
                       textColor: Colors.black87,
                       onPressed: () => Navigator.pushNamed(context, '/cadastro'),
                     ),
