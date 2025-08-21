@@ -9,6 +9,11 @@ import 'screens/tela_qrcode.dart';
 import 'screens/tela_pontuacao.dart';
 import 'screens/tela_mapa.dart';
 import 'screens/tela_cadastro.dart';
+import 'screens/tela_dicas.dart';
+import 'screens/tela_quiz.dart';
+import 'screens/tela_acertou.dart';
+import 'screens/tela_errou.dart';
+import 'screens/tela_tutorial.dart';
 
 void main() {
   runApp(const TrilhaVerdeApp());
@@ -37,6 +42,11 @@ class TrilhaVerdeApp extends StatelessWidget {
         '/qrcode': (context) => const TelaQRCode(),
         '/pontuacao': (context) => const TelaPontuacao(),
         '/mapa': (context) => const TelaMapa(),
+        '/dicas':  (context) => const TelaDicas(),
+        '/quiz':   (context) => const TelaQuiz(),
+        '/acertou': (context) => const TelaAcertou(),
+        '/errou': (context) => const TelaErrou(),
+        '/tutorial': (context) => const TelaTutorial(),
       },
     );
   }

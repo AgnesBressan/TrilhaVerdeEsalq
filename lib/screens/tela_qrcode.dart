@@ -1,9 +1,7 @@
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'tela_quiz.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/app_colors.dart';
 
 class TelaQRCode extends StatefulWidget {
   const TelaQRCode({super.key});
@@ -13,212 +11,220 @@ class TelaQRCode extends StatefulWidget {
 }
 
 class _TelaQRCodeState extends State<TelaQRCode> {
-  String? qrText;
-  bool cameraStarted = true;
-  bool isProcessing = false;
+  final _controller = MobileScannerController(
+    facing: CameraFacing.back,
+    torchEnabled: false,
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
+
+  bool _handled = false;
 
   @override
-  void initState() {
-    super.initState();
-    _testarLeituraJson();
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  Future<void> _testarLeituraJson() async {
-    try {
-      print('[TESTE] Tentando ler JSON ao entrar na tela...');
-      String jsonString = await rootBundle.loadString('lib/assets/bdtrilhaverde.json');
-      final Map<String, dynamic> dados = jsonDecode(jsonString);
-
-      print('[SUCESSO] JSON carregado. Árvores disponíveis:');
-      for (var chave in dados["Árvores Úteis"].keys) {
-        final nome = dados["Árvores Úteis"][chave]["arvore"];
-        print('- $chave → $nome');
-      }
-    } catch (e) {
-      print('[ERRO] Erro ao carregar JSON no initState: $e');
-    }
+  Future<void> _goToDicas({
+    required String arvoreId,
+    required String titulo,
+    required int? numero,
+    required String qr,
+  }) async {
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(
+      context,
+      '/dicas',
+      arguments: {
+        'arvoreId': arvoreId,
+        'titulo': titulo,
+        'numero': numero,
+        'qr': qr,
+      },
+    );
   }
 
-  void _onDetect(BarcodeCapture capture) async {
-    final code = capture.barcodes.first.rawValue;
-    if (code != null && !isProcessing) {
-      setState(() {
-        isProcessing = true;
-        qrText = code;
-        cameraStarted = false;
-      });
+  void _onDetect(
+    BarcodeCapture capture,
+    String arvoreId,
+    String titulo,
+    int? numero,
+  ) async {
+    if (_handled) return;
+    final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
+    final value = barcode?.rawValue ?? '';
+    if (value.isEmpty) return;
 
-      final uri = Uri.tryParse(code);
-      final idArvore = uri != null && uri.queryParameters.containsKey('narvore')
-          ? uri.queryParameters['narvore']
-          : null;
+    _handled = true;
 
-      if (idArvore != null) {
-        await _processQRCode(idArvore);
-      } else {
-        _mostrarErro("QR Code inválido!");
-      }
-    }
-  }
-
-Future<void> _processQRCode(String idArvore) async {
-  try {
-    print('[DEBUG] Código QR processado: "$idArvore"');
-    String jsonString = await rootBundle.loadString('lib/assets/bdtrilhaverde.json');
-    final Map<String, dynamic> dados = jsonDecode(jsonString);
-    final arvores = dados["Árvores Úteis"] as Map<String, dynamic>;
-
-    if (!arvores.containsKey(idArvore)) {
-      _mostrarErro("QR Code \"$idArvore\" não reconhecido!");
-      return;
-    }
-
-    final arvoreEncontrada = arvores[idArvore];
-    final int sequenciaLida = arvoreEncontrada["sequencia"];
-    final nomeArvore = arvoreEncontrada["arvore"];
-    final perguntas = arvoreEncontrada["perguntas"];
-
-    final prefs = await SharedPreferences.getInstance();
-
-    final int ultimaSequencia = prefs.getInt('ultimaSequenciaDesbloqueada') ?? 0;
-    final String? ultimaArvoreLida = prefs.getString('ultimaArvoreLida');
-
-    // 1. Se a árvore já foi lida, mas ainda não respondida corretamente (usuário errou)
-    if (idArvore == ultimaArvoreLida && sequenciaLida == ultimaSequencia + 1) {
-      // permite refazer a pergunta da árvore atual
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TelaQuiz(
-            perguntas: perguntas,
-            nomeArvore: nomeArvore,
-            idArvore: idArvore,
-          ),
-        ),
-      );
-      return;
-    }
-
-    // 2. Se a árvore já foi visitada (sequência menor que última desbloqueada)
-    if (sequenciaLida <= ultimaSequencia) {
-      _mostrarErro("Você já visitou essa árvore!");
-      return;
-    }
-
-    // 3. Se for a árvore atual (sequencia == ultima + 1), deixa entrar e registra o ID
-    if (sequenciaLida == ultimaSequencia + 1) {
-      // marca como última árvore lida (permite repetir enquanto não acertar)
-      await prefs.setString('ultimaArvoreLida', idArvore);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TelaQuiz(
-            perguntas: perguntas,
-            nomeArvore: nomeArvore,
-            idArvore: idArvore,
-          ),
-        ),
-      );
-      return;
-    }
-
-    // 4. Qualquer outro caso: árvore futura ainda não desbloqueada
-    _mostrarErro("Você ainda não desbloqueou esta árvore.\nSiga a ordem da trilha!");
-  } catch (e) {
-    _mostrarErro("Erro ao carregar dados: $e");
-  } finally {
-    setState(() {
-      isProcessing = false;
-    });
-  }
-}
-
-  void _mostrarErro(String mensagem) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Erro"),
-        content: Text(mensagem),
-        actions: [
-          TextButton(
-            child: const Text("OK"),
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                cameraStarted = true;
-                qrText = null;
-              });
-            },
-          ),
-        ],
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('QR lido de $titulo: $value'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 900),
       ),
     );
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    _goToDicas(arvoreId: arvoreId, titulo: titulo, numero: numero, qr: value);
   }
 
   @override
   Widget build(BuildContext context) {
+    final args =
+        (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ??
+            {};
+    final arvoreId = args['arvoreId'] as String? ?? 'desconhecida';
+    final titulo   = args['titulo'] as String? ?? 'Árvore';
+    final numero   = args['numero'] as int?;
+    final titleText = numero != null ? 'Árvore $numero' : titulo;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF90E0D4),
-        elevation: 0,
-        toolbarHeight: 100,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
           children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/principal');
-              },
-              child: Image.asset('lib/assets/img/logo.png', height: 50),
+            // HEADER (igual ao painel) + seta voltar
+            Container(
+              width: double.infinity,
+              color: AppColors.panelBg,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: AppColors.principal_title),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lendo QR de $titleText',
+                          style: const TextStyle(
+                            color: AppColors.principal_title,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Atalho de debug: simula leitura e vai para /dicas
+                  if (kDebugMode)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: InkWell(
+                        onTap: () => _goToDicas(
+                          arvoreId: arvoreId,
+                          titulo: titulo,
+                          numero: numero,
+                          qr: 'DEBUG-${DateTime.now().millisecondsSinceEpoch}',
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF27C46B),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text('Debug', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.menu, color: Colors.black),
-              onPressed: () {
-                Navigator.pushNamed(context, '/menu');
-              },
+
+            // SCANNER
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MobileScanner(
+                    controller: _controller,
+                    onDetect: (c) => _onDetect(c, arvoreId, titulo, numero),
+                  ),
+                  // Moldura/mira
+                  LayoutBuilder(
+                    builder: (context, c) {
+                      final side = (c.maxWidth < c.maxHeight
+                              ? c.maxWidth
+                              : c.maxHeight) *
+                          0.70;
+                      return Center(
+                        child: Container(
+                          width: side,
+                          height: side,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.9),
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  // botões
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 24,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _RoundIcon(
+                          icon: Icons.flash_on_rounded,
+                          onTap: () => _controller.toggleTorch(),
+                        ),
+                        _RoundIcon(
+                          icon: Icons.cameraswitch_rounded,
+                          onTap: () => _controller.switchCamera(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-      body: Stack(
-        children: [
-          if (cameraStarted)
-            MobileScanner(
-              controller: MobileScannerController(
-                facing: CameraFacing.back,
-              ),
-              onDetect: _onDetect,
-            )
-          else
-            const Center(
-              child: Text(
-                'QR Code detectado!',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          Column(
-            children: [
-              const SizedBox(height: 16),
-              const Spacer(),
-              if (qrText != null)
-                Container(
-                  color: Colors.black54,
-                  padding: const EdgeInsets.all(16),
-                  width: double.infinity,
-                  child: Text(
-                    'QR Lido: $qrText',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
+    );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _RoundIcon({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withOpacity(0.35),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Icon(icon, color: Colors.white, size: 26),
+        ),
       ),
     );
   }

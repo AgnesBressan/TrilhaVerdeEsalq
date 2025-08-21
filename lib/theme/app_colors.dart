@@ -21,5 +21,6 @@ class AppColors {
   static const Color navIcon      = Color(0xFF554336);       // cor dos ícones
   static const Color navActive    = Color(0xFF8B5E3C);       // círculo da aba ativa
   static const Color principal_title = Color(0xFF554336);
+  static const Color play = Color(0xFF303030);
 }
 

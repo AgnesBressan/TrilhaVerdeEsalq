@@ -1,220 +1,193 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <-- novo
+import '../theme/app_colors.dart';
 
 class TelaQuiz extends StatefulWidget {
-  final List<dynamic> perguntas;
-  final String nomeArvore;
-  final String idArvore; // Adicionar o id
-
-  const TelaQuiz({
-    super.key,
-    required this.perguntas,
-    required this.nomeArvore,
-    required this.idArvore, // Adicionar o id
-  });
+  const TelaQuiz({super.key});
 
   @override
   State<TelaQuiz> createState() => _TelaQuizState();
 }
 
 class _TelaQuizState extends State<TelaQuiz> {
-  int? respostaSelecionada;
-  bool respondido = false;
-  late Map<String, dynamic> perguntaAtual;
-  late List<String> alternativas;
-  late String respostaCorreta;
+  // Template (virá do SQL)
+  final String pergunta =
+      'Pergunta de exemplo: qual alternativa está correta?';
+
+  // Por enquanto a correta é a A
+  final String _corretaKey = 'A';
+
+  // mesmo total da sua tela de pontuação
+  static const int totalArvores = 13;
+
+  late final List<_Opcao> _opcoes;
 
   @override
   void initState() {
     super.initState();
-    perguntaAtual = widget.perguntas[0];
-    alternativas = perguntaAtual['alternativas'].values.toList().cast<String>();
-    respostaCorreta = perguntaAtual['resposta_correta'];
+    final list = <_Opcao>[
+      _Opcao(key: 'A', titulo: 'Item A', color: const Color(0xFF4F6F52)),
+      _Opcao(key: 'B', titulo: 'Item B', color: const Color(0xFFA7C957)),
+      _Opcao(key: 'C', titulo: 'Item C', color: const Color(0xFFEBA937)),
+      _Opcao(key: 'D', titulo: 'Item E', color: const Color(0xFFA35E2D)), // mock
+      _Opcao(key: 'E', titulo: 'Item D', color: const Color(0xFF8B5E3C)),
+    ];
+    list.shuffle(Random());
+    _opcoes = list;
   }
 
-  Future<void> responder(int indice) async {
-    if (respondido) return;
-
-    setState(() {
-      respostaSelecionada = indice;
-      respondido = true;
-    });
-
+  // ---------- REGISTRA 1 ÁRVORE LIDA QUANDO ACERTAR ----------
+  Future<void> _registrarAcerto() async {
     final prefs = await SharedPreferences.getInstance();
-    final nomeUsuario = prefs.getString('nome_usuario') ?? 'Usuário';
-    final chavePontuacao = 'pontuacao_$nomeUsuario';
-    final chaveArvores = 'arvores_lidas_$nomeUsuario';
+    final nome = prefs.getString('nome_usuario') ?? 'Usuário';
+    final key  = 'arvores_lidas_$nome';
 
-    final arvoresLidas = prefs.getStringList(chaveArvores) ?? [];
+    final lidas = prefs.getStringList(key) ?? <String>[];
+    if (lidas.length < totalArvores) {
+      // salva como "Árvore N" (segue seu padrão usado na pontuação)
+      lidas.add('Árvore ${lidas.length + 1}');
+      await prefs.setStringList(key, lidas);
+    }
+  }
+  // -----------------------------------------------------------
 
-    final bool acertou = alternativas[indice] == respostaCorreta;
-
+  void _onTapOpcao(_Opcao op) async {
+    final acertou = op.key == _corretaKey;
     if (acertou) {
-      if (!arvoresLidas.contains(widget.idArvore)) {
-        // só salva como "lida" se for acerto
-        arvoresLidas.add(widget.idArvore);
-        await prefs.setStringList(chaveArvores, arvoresLidas);
-
-        final pontuacaoAtual = prefs.getInt(chavePontuacao) ?? 0;
-        await prefs.setInt(chavePontuacao, pontuacaoAtual + 1);
-        print('[DEBUG] +1 ponto! Nova pontuação salva.');
-
-        // atualiza o progresso da trilha
-        final sequenciaAtual = prefs.getInt('ultimaSequenciaDesbloqueada') ?? 0;
-        await prefs.setInt('ultimaSequenciaDesbloqueada', sequenciaAtual + 1);
-
-        // remove referência à árvore atual para impedir refazer
-        await prefs.remove('ultimaArvoreLida');
-      }
+      await _registrarAcerto();                 // <-- incrementa aqui
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/acertou');
+    } else {
+      Navigator.pushReplacementNamed(context, '/errou');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool acertou = respostaSelecionada != null && alternativas[respostaSelecionada!] == respostaCorreta;
-    final double largura = MediaQuery.of(context).size.width;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF90E0D4),
-        elevation: 0,
-        toolbarHeight: 80,
-        title: Image.asset('lib/assets/img/logo.png', height: 40),
-        centerTitle: false,
-        automaticallyImplyLeading: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.emoji_events),
-            onPressed: () => Navigator.pushNamed(context, '/pontuacao'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.map),
-            onPressed: () => Navigator.pushNamed(context, '/principal'),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: respondido ? Colors.grey[300] : const Color(0xFF90E0D4),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  perguntaAtual['pergunta'],
-                  style: TextStyle(
-                    fontSize: largura * 0.05,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
+            // nuvens (como você pediu)
+            Positioned(top: 40, left: 24,
+              child: Image.asset('lib/assets/img/grande_nuvem.png', width: 96)),
+            Positioned(top: 72, right: 32,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 72)),
+            Positioned(top: size.height * 0.30, left: 36,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 68)),
+            Positioned(top: size.height * 0.40, right: 36,
+              child: Image.asset('lib/assets/img/grande_nuvem.png', width: 110)),
+            Positioned(bottom: 90, left: 26,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 60)),
+            Positioned(bottom: 70, right: 30,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 64)),
 
-            if (respondido && !acertou)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'Resposta correta: $respostaCorreta',
-                  style: TextStyle(
-                    color: Colors.green[700],
-                    fontSize: largura * 0.045,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            // painel central
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5DAC3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                'Pergunta de exemplo: qual alternativa está correta?',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 16,
+                                  color: Color(0xFF827B6D),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
 
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Column(
-                  children: List.generate(alternativas.length, (i) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: ElevatedButton(
-                        onPressed: () => responder(i),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: respondido
-                              ? (alternativas[i] == respostaCorreta
-                                  ? Colors.green
-                                  : (i == respostaSelecionada
-                                      ? Colors.red
-                                      : Colors.grey[300]))
-                              : Colors.pink[100],
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-                          minimumSize: const Size(double.infinity, 60),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          elevation: 4,
-                        ),
-                        child: Text(
-                          alternativas[i],
-                          style: TextStyle(fontSize: largura * 0.040),
+                            for (final op in _opcoes) ...[
+                              _OpcaoTile(
+                                titulo: op.titulo,
+                                textColor: op.color,
+                                bgColor: op.color.withOpacity(0.37),
+                                onTap: () => _onTapOpcao(op),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                          ],
                         ),
                       ),
-                    );
-                  }),
-                ),
-
-                if (respondido)
-                  Positioned(
-                    top: 40,
-                    child: SizedBox(
-                      height: 140,
-                      width: 140,
-                      child: Image.asset(
-                        acertou ? 'lib/assets/img/certo.png' : 'lib/assets/img/errado.png',
-                        fit: BoxFit.contain,
-                      ),
                     ),
                   ),
-              ],
+                );
+              },
             ),
-
-            const SizedBox(height: 32),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/pontuacao'),
-                  icon: const Icon(Icons.emoji_events),
-                  label: const Text('Pontuações'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink[300],
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/principal'),
-                  icon: const Icon(Icons.map),
-                  label: const Text('Mapa'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink[300],
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Opcao {
+  final String key;
+  final String titulo;
+  final Color color;
+  const _Opcao({required this.key, required this.titulo, required this.color});
+}
+
+class _OpcaoTile extends StatelessWidget {
+  final String titulo;
+  final Color textColor;
+  final Color bgColor;
+  final VoidCallback onTap;
+  const _OpcaoTile({
+    required this.titulo,
+    required this.textColor,
+    required this.bgColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            titulo,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: textColor,
+              letterSpacing: 0.2,
+            ),
+          ),
         ),
       ),
     );

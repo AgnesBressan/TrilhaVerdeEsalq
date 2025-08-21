@@ -70,7 +70,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                   height: 1.05,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 15),
 
               // SAUDAÇÃO
               RichText(
@@ -80,12 +80,13 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     color: Colors.black87,
                   ),
                   children: [
-                    const TextSpan(text: 'Olá, ', style: TextStyle(color: AppColors.explorer)),
+                    const TextSpan(text: 'Olá, ', style: TextStyle(color: AppColors.explorer, fontFamily: 'Poppins')),
                     TextSpan(
                       text: '$nomeUsuario!',
                       style: const TextStyle(
                         color: AppColors.explorer, // verde
                         fontWeight: FontWeight.w700,
+                        fontFamily: 'Poppins'
                       ),
                     ),
                   ],
@@ -123,11 +124,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                 child: SizedBox(
                   child: AppButton(
                     label: 'COMO JOGAR?',
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tutorial em breve 👀')),
-                      );
-                    },
+                    onPressed: () => Navigator.pushNamed(context, '/tutorial'),
                   ),
                 ),
               ),
