@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // <-- novo
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 
 class TelaQuiz extends StatefulWidget {
@@ -11,14 +11,8 @@ class TelaQuiz extends StatefulWidget {
 }
 
 class _TelaQuizState extends State<TelaQuiz> {
-  // Template (virá do SQL)
-  final String pergunta =
-      'Pergunta de exemplo: qual alternativa está correta?';
-
-  // Por enquanto a correta é a A
+  final String pergunta = 'Pergunta';
   final String _corretaKey = 'A';
-
-  // mesmo total da sua tela de pontuação
   static const int totalArvores = 13;
 
   late final List<_Opcao> _opcoes;
@@ -30,34 +24,37 @@ class _TelaQuizState extends State<TelaQuiz> {
       _Opcao(key: 'A', titulo: 'Item A', color: const Color(0xFF4F6F52)),
       _Opcao(key: 'B', titulo: 'Item B', color: const Color(0xFFA7C957)),
       _Opcao(key: 'C', titulo: 'Item C', color: const Color(0xFFEBA937)),
-      _Opcao(key: 'D', titulo: 'Item E', color: const Color(0xFFA35E2D)), // mock
+      _Opcao(key: 'D', titulo: 'Item E', color: const Color(0xFFA35E2D)),
       _Opcao(key: 'E', titulo: 'Item D', color: const Color(0xFF8B5E3C)),
-    ];
-    list.shuffle(Random());
+    ]..shuffle(Random());
     _opcoes = list;
   }
 
-  // ---------- REGISTRA 1 ÁRVORE LIDA QUANDO ACERTAR ----------
-  Future<void> _registrarAcerto() async {
+  /// Salva +1 árvore lida e retorna o novo total salvo.
+  Future<int> _registrarAcerto() async {
     final prefs = await SharedPreferences.getInstance();
     final nome = prefs.getString('nome_usuario') ?? 'Usuário';
     final key  = 'arvores_lidas_$nome';
 
     final lidas = prefs.getStringList(key) ?? <String>[];
     if (lidas.length < totalArvores) {
-      // salva como "Árvore N" (segue seu padrão usado na pontuação)
       lidas.add('Árvore ${lidas.length + 1}');
       await prefs.setStringList(key, lidas);
     }
+    return (prefs.getStringList(key) ?? <String>[]).length;
   }
-  // -----------------------------------------------------------
 
   void _onTapOpcao(_Opcao op) async {
     final acertou = op.key == _corretaKey;
     if (acertou) {
-      await _registrarAcerto();                 // <-- incrementa aqui
+      final novoTotal = await _registrarAcerto();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/acertou');
+
+      if (novoTotal >= totalArvores) {
+        Navigator.pushReplacementNamed(context, '/ganhou');
+      } else {
+        Navigator.pushReplacementNamed(context, '/acertou');
+      }
     } else {
       Navigator.pushReplacementNamed(context, '/errou');
     }
@@ -72,7 +69,7 @@ class _TelaQuizState extends State<TelaQuiz> {
       body: SafeArea(
         child: Stack(
           children: [
-            // nuvens (como você pediu)
+            // nuvens
             Positioned(top: 40, left: 24,
               child: Image.asset('lib/assets/img/grande_nuvem.png', width: 96)),
             Positioned(top: 72, right: 32,
@@ -106,10 +103,10 @@ class _TelaQuizState extends State<TelaQuiz> {
                                 color: const Color(0xFFE5DAC3),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Text(
-                                'Pergunta de exemplo: qual alternativa está correta?',
+                              child: Text(
+                                pergunta,
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 16,
                                   color: Color(0xFF827B6D),

@@ -14,6 +14,7 @@ import 'screens/tela_quiz.dart';
 import 'screens/tela_acertou.dart';
 import 'screens/tela_errou.dart';
 import 'screens/tela_tutorial.dart';
+import 'screens/tela_ganhou.dart';
 
 void main() {
   runApp(const TrilhaVerdeApp());
@@ -47,6 +48,7 @@ class TrilhaVerdeApp extends StatelessWidget {
         '/acertou': (context) => const TelaAcertou(),
         '/errou': (context) => const TelaErrou(),
         '/tutorial': (context) => const TelaTutorial(),
+        '/ganhou': (context) => const TelaGanhou(),
       },
     );
   }
