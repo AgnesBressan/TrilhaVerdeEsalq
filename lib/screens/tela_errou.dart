@@ -1,9 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart'; // Importa o pacote de áudio
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 
-class TelaErrou extends StatelessWidget {
-  const TelaErrou({super.key});
+class TelaErrou extends StatefulWidget {
+  final String? audioDicaUrl; // Propriedade para receber a URL da dica
+
+  const TelaErrou({super.key, required this.audioDicaUrl});
+
+  @override
+  State<TelaErrou> createState() => _TelaErrouState();
+}
+
+class _TelaErrouState extends State<TelaErrou> {
+  late final AudioPlayer player;
+
+  @override
+  void initState() {
+    super.initState();
+    player = AudioPlayer();
+  }
+
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playAudio() async {
+    if (widget.audioDicaUrl != null && widget.audioDicaUrl!.isNotEmpty) {
+      await player.play(UrlSource(widget.audioDicaUrl!));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhuma dica em áudio disponível.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +46,7 @@ class TelaErrou extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            // ===== NUVENS (mesmo layout da tela acertou) =====
+            // ===== NUVENS =====
             Positioned(
               top: 40,
               left: 200,
@@ -45,7 +77,7 @@ class TelaErrou extends StatelessWidget {
               left: 80,
               child: Image.asset('lib/assets/img/grande_nuvem.png', width: 100),
             ),
-
+            
             // ===== CONTEÚDO =====
             Center(
               child: SingleChildScrollView(
@@ -59,7 +91,7 @@ class TelaErrou extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Poppins',
-                        color: Color(0xFF8F3D3D), // vermelho do layout
+                        color: Color(0xFF8F3D3D),
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
@@ -68,7 +100,6 @@ class TelaErrou extends StatelessWidget {
                     ),
                     const SizedBox(height: 22),
 
-                    // mascote triste
                     Image.asset(
                       'lib/assets/img/errou.png',
                       width: 190,
@@ -76,7 +107,6 @@ class TelaErrou extends StatelessWidget {
                     ),
                     const SizedBox(height: 22),
 
-                    // ===== Caixinha de áudio (snippet pedido) =====
                     Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -87,27 +117,13 @@ class TelaErrou extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Botão play
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: IconButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Play de áudio'),
-                                      duration: Duration(milliseconds: 800),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: AppColors.play,
-                                ),
+                            IconButton(
+                              onPressed: _playAudio, // [ALTERADO] Chama a função de tocar áudio
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: AppColors.play,
                               ),
                             ),
-                            // Waveform (imagem)
                             Image.asset(
                               'lib/assets/img/sound.png',
                               height: 30,
@@ -120,11 +136,15 @@ class TelaErrou extends StatelessWidget {
 
                     const SizedBox(height: 20),
 
-                    // Botão "Tentar novamente"
                     SizedBox(
                       child: AppButton(
                         label: 'TENTAR NOVAMENTE',
-                        onPressed: () => Navigator.pushReplacementNamed(context, '/quiz'),
+                        onPressed: () {
+                          // [ALTERADO] A melhor forma é voltar para a tela anterior
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        },
                       ),
                     ),
                   ],

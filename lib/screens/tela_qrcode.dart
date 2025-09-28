@@ -17,7 +17,23 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
 
-  bool _handled = false;
+  // [ALTERADO] Variáveis de estado para guardar os dados esperados
+  String? _trilhaEsperada;
+  int? _arvoreCodigoEsperado;
+  String? _tituloArvore;
+  bool _handledScan = false; // Flag para evitar múltiplas detecções
+
+  // [ALTERADO] É melhor pegar os argumentos no didChangeDependencies
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?);
+    if (args != null) {
+      _trilhaEsperada = args['trilha'];
+      _arvoreCodigoEsperado = args['arvoreCodigo'];
+      _tituloArvore = args['titulo'];
+    }
+  }
 
   @override
   void dispose() {
@@ -25,67 +41,80 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     super.dispose();
   }
 
-  Future<void> _goToDicas({
-    required String arvoreId,
-    required String titulo,
-    required int? numero,
-    required String qr,
-  }) async {
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
-      '/dicas',
-      arguments: {
-        'arvoreId': arvoreId,
-        'titulo': titulo,
-        'numero': numero,
-        'qr': qr,
-      },
-    );
+  /// Função para o botão de debug, está perfeita.
+  void _onDebugTap() {
+    if (_trilhaEsperada != null && _arvoreCodigoEsperado != null) {
+      Navigator.pushReplacementNamed(
+        context,
+        '/dicas',
+        arguments: {
+          'trilha': _trilhaEsperada,
+          'arvoreCodigo': _arvoreCodigoEsperado,
+        },
+      );
+    }
   }
 
-  void _onDetect(
-    BarcodeCapture capture,
-    String arvoreId,
-    String titulo,
-    int? numero,
-  ) async {
-    if (_handled) return;
+  /// [LÓGICA CORRIGIDA] Função chamada na leitura do QR Code
+  void _onDetect(BarcodeCapture capture) {
+    if (_handledScan) return; // Se já lidamos com um scan, ignora os próximos
+
     final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
-    final value = barcode?.rawValue ?? '';
-    if (value.isEmpty) return;
+    final qrCodeData = barcode?.rawValue ?? '';
+    if (qrCodeData.isEmpty) return;
+    
+    _handledScan = true; // Marca que já processamos um código
+    _controller.stop();  // Para a câmera
 
-    _handled = true;
+    try {
+      // 1. Extrai os dados do QR Code (formato: "nome_da_trilha;codigo")
+      final parts = qrCodeData.split(';');
+      final trilhaLida = parts[0];
+      final codigoLido = int.parse(parts[1]);
 
+      // 2. Compara os dados lidos com os dados esperados (vindos do mapa)
+      if (trilhaLida == _trilhaEsperada && codigoLido == _arvoreCodigoEsperado) {
+        // SUCESSO! Os dados batem. Navega para a tela de dicas.
+        Navigator.pushReplacementNamed(
+          context,
+          '/dicas',
+          arguments: {
+            'trilha': _trilhaEsperada,
+            'arvoreCodigo': _arvoreCodigoEsperado,
+          },
+        );
+      } else {
+        // ERRO: O usuário escaneou o QR Code da árvore errada.
+        _mostrarErroEVoltar('Você escaneou o QR Code da árvore errada!');
+      }
+    } catch (e) {
+      // ERRO: O formato do QR Code é inválido.
+      _mostrarErroEVoltar('Este QR Code não parece ser válido.');
+    }
+  }
+
+  // Função auxiliar para mostrar um erro e voltar ao mapa
+  void _mostrarErroEVoltar(String mensagem) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('QR lido de $titulo: $value'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 900),
-      ),
+      SnackBar(content: Text(mensagem, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent),
     );
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    _goToDicas(arvoreId: arvoreId, titulo: titulo, numero: numero, qr: value);
+    // Volta para o mapa após um curto período
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ??
-            {};
-    final arvoreId = args['arvoreId'] as String? ?? 'desconhecida';
-    final titulo   = args['titulo'] as String? ?? 'Árvore';
-    final numero   = args['numero'] as int?;
-    final titleText = numero != null ? 'Árvore $numero' : titulo;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER (igual ao painel) + seta voltar
+            // HEADER - está ótimo
             Container(
               width: double.infinity,
               color: AppColors.panelBg,
@@ -94,8 +123,7 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        color: AppColors.principal_title),
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.principal_title),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 4),
@@ -104,7 +132,7 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lendo QR de $titleText',
+                          'Lendo QR de ${_tituloArvore ?? "..."}',
                           style: const TextStyle(
                             color: AppColors.principal_title,
                             fontWeight: FontWeight.w700,
@@ -114,22 +142,14 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                       ],
                     ),
                   ),
-
-                  // Atalho de debug: simula leitura e vai para /dicas
                   if (kDebugMode)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: InkWell(
-                        onTap: () => _goToDicas(
-                          arvoreId: arvoreId,
-                          titulo: titulo,
-                          numero: numero,
-                          qr: 'DEBUG-${DateTime.now().millisecondsSinceEpoch}',
-                        ),
+                        onTap: _onDebugTap,
                         borderRadius: BorderRadius.circular(24),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: const Color(0xFF27C46B),
                             borderRadius: BorderRadius.circular(24),
@@ -148,22 +168,18 @@ class _TelaQRCodeState extends State<TelaQRCode> {
               ),
             ),
 
-            // SCANNER
+            // SCANNER - está ótimo
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   MobileScanner(
                     controller: _controller,
-                    onDetect: (c) => _onDetect(c, arvoreId, titulo, numero),
+                    onDetect: _onDetect,
                   ),
-                  // Moldura/mira
                   LayoutBuilder(
                     builder: (context, c) {
-                      final side = (c.maxWidth < c.maxHeight
-                              ? c.maxWidth
-                              : c.maxHeight) *
-                          0.70;
+                      final side = (c.maxWidth < c.maxHeight ? c.maxWidth : c.maxHeight) * 0.70;
                       return Center(
                         child: Container(
                           width: side,
@@ -179,7 +195,6 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                       );
                     },
                   ),
-                  // botões
                   Positioned(
                     left: 16,
                     right: 16,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:trilha_verde_esalq/screens/tela_inicio.dart';
+
+// telas
+import 'screens/tela_inicio.dart';
 import 'screens/tela_login.dart';
 import 'screens/tela_home.dart';
 import 'screens/tela_principal.dart';
@@ -12,7 +14,6 @@ import 'screens/tela_cadastro.dart';
 import 'screens/tela_dicas.dart';
 import 'screens/tela_quiz.dart';
 import 'screens/tela_acertou.dart';
-import 'screens/tela_errou.dart';
 import 'screens/tela_tutorial.dart';
 import 'screens/tela_ganhou.dart';
 
@@ -29,27 +30,32 @@ class TrilhaVerdeApp extends StatelessWidget {
       title: 'Trilha Verde',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Poppins', // fonte global
+        fontFamily: 'Poppins',
+        useMaterial3: false,
       ),
+      // escolha a rota inicial que você usa como “splash”/início
       initialRoute: '/',
       routes: {
-        '/': (context) => const TelaInicial(),
-        '/login': (context) => TelaLogin(),
-        '/home': (context) => const TelaHome(),
-        '/cadastro': (context) => const TelaCadastro(),
-        '/principal': (context) => const TelaPrincipal(),
-        '/menu': (context) => const TelaMenu(),
-        '/perfil': (context) => const TelaPerfil(),
-        '/qrcode': (context) => const TelaQRCode(),
-        '/pontuacao': (context) => const TelaPontuacao(),
-        '/mapa': (context) => const TelaMapa(),
-        '/dicas':  (context) => const TelaDicas(),
-        '/quiz':   (context) => const TelaQuiz(),
-        '/acertou': (context) => const TelaAcertou(),
-        '/errou': (context) => const TelaErrou(),
-        '/tutorial': (context) => const TelaTutorial(),
-        '/ganhou': (context) => const TelaGanhou(),
+        '/':            (context) => const TelaInicial(),
+        '/login':       (context) => const TelaLogin(),
+        '/home':        (context) => const TelaHome(),
+        '/cadastro':    (context) => const TelaCadastro(),
+        '/principal':   (context) => const TelaPrincipal(),
+        '/menu':        (context) => const TelaMenu(),
+        '/perfil':      (context) => const TelaPerfil(),
+        '/qrcode':      (context) => const TelaQRCode(),
+        '/pontuacao':   (context) => const TelaPontuacao(),
+        '/mapa':        (context) => const TelaMapa(),
+        '/dicas':       (context) => const TelaDicas(),
+        '/quiz':        (context) => const TelaQuiz(),
+        '/acertou':     (context) => const TelaAcertou(),
+        '/tutorial':    (context) => const TelaTutorial(),
+        '/ganhou':      (context) => const TelaGanhou(),
       },
+      // opcional: fallback pra rotas desconhecidas
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => const TelaInicial(),
+      ),
     );
   }
 }

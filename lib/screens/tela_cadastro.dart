@@ -1,8 +1,12 @@
-// lib/screens/tela_cadastro.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../theme/app_colors.dart';
 import '../widgets/home_action_button.dart';
+import '../models/usuario.dart';
+// >>> ADICIONE:
+import '../services/api_cliente.dart';
+import '../models/usuario.dart';
 
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
@@ -19,6 +23,8 @@ class _TelaCadastroState extends State<TelaCadastro> {
   int? _idade;
   bool _saving = false;
 
+  final _api = ApiClient();
+
   @override
   void dispose() {
     _nomeCtrl.dispose();
@@ -31,66 +37,73 @@ class _TelaCadastroState extends State<TelaCadastro> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('nome_usuario', _nomeCtrl.text.trim());
-    await prefs.setString('nickname_usuario', _nickCtrl.text.trim());
-    await prefs.setInt('idade_usuario', _idade!);
-    await prefs.setString('ano_escolar_usuario', _anoCtrl.text.trim());
-    // mantém o mesmo comportamento do login: usa o nickname como último usuário
-    await prefs.setString('ultimo_usuario', _nickCtrl.text.trim());
+    final usuario = Usuario(
+      nickname: _nickCtrl.text.trim(),
+      nome: _nomeCtrl.text.trim(),
+      idade: _idade!,
+      anoEscolar: _anoCtrl.text.trim(),
+      numArvoresVisitadas: 0,
+    );
 
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/principal');
+    try {
+      // chama o backend
+      await _api.salvarUsuario(usuario); // cria ou atualiza
+
+      // opcional: guardar quem é o último usuário logado
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('ultimo_usuario', usuario.nickname);
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/principal', arguments: usuario);
+    } on ApiConflictError catch (_) {
+      // 409 (nickname já existe)
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este nickname já está em uso.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao cadastrar: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   InputDecoration _fieldDecoration(String hint) => InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.15)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFFA7C957), width: 2),
-        ),
-      );
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.black.withOpacity(0.15)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.black.withOpacity(0.12)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFA7C957), width: 2),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Stack(
           children: [
-            // NUVENS (mesmos assets das outras telas)
-            Positioned(
-              top: 36,
-              left: 26,
-              child: Image.asset('lib/assets/img/grande_nuvem.png', width: 96),
-            ),
-            Positioned(
-              top: 86,
-              right: 34,
-              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 72),
-            ),
-            Positioned(
-              bottom: 40,
-              left: 24,
-              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 60),
-            ),
+            Positioned(top: 36, left: 26,
+              child: Image.asset('lib/assets/img/grande_nuvem.png', width: 96)),
+            Positioned(top: 86, right: 34,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 72)),
+            Positioned(bottom: 40, left: 24,
+              child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 60)),
 
-            // PAINEL CENTRAL
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
@@ -98,7 +111,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
                   decoration: BoxDecoration(
-                    color: AppColors.panelBg, // #E5DAC3
+                    color: AppColors.panelBg,
                     borderRadius: BorderRadius.circular(26),
                   ),
                   child: Form(
@@ -108,10 +121,9 @@ class _TelaCadastroState extends State<TelaCadastro> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Center(
-                          child: Text(
-                            'Cadastro',
+                          child: Text('Cadastro',
                             style: TextStyle(
-                              color: AppColors.welcome, // #A35E2D
+                              color: AppColors.welcome,
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                             ),
@@ -119,10 +131,9 @@ class _TelaCadastroState extends State<TelaCadastro> {
                         ),
                         const SizedBox(height: 16),
 
-                        const Text(
-                          'Nome',
+                        const Text('Nome',
                           style: TextStyle(
-                            color: AppColors.explorer, // #4F6F52
+                            color: AppColors.explorer,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -133,13 +144,11 @@ class _TelaCadastroState extends State<TelaCadastro> {
                           decoration: _fieldDecoration('Seu nome'),
                           validator: (v) =>
                               (v == null || v.trim().isEmpty)
-                                  ? 'Informe o nome'
-                                  : null,
+                                  ? 'Informe o nome' : null,
                         ),
                         const SizedBox(height: 14),
 
-                        const Text(
-                          'Nickname',
+                        const Text('Nickname',
                           style: TextStyle(
                             color: AppColors.explorer,
                             fontWeight: FontWeight.w700,
@@ -158,8 +167,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                         ),
                         const SizedBox(height: 14),
 
-                        const Text(
-                          'Idade',
+                        const Text('Idade',
                           style: TextStyle(
                             color: AppColors.explorer,
                             fontWeight: FontWeight.w700,
@@ -169,24 +177,17 @@ class _TelaCadastroState extends State<TelaCadastro> {
                         DropdownButtonFormField<int>(
                           value: _idade,
                           decoration: _fieldDecoration('Selecione sua idade'),
-                          items: List.generate(
-                            58, // 3..60
-                            (i) {
-                              final age = 3 + i;
-                              return DropdownMenuItem(
-                                value: age,
-                                child: Text(age.toString()),
-                              );
-                            },
-                          ),
+                          items: List.generate(58, (i) {
+                            final age = 3 + i; // 3..60
+                            return DropdownMenuItem(
+                              value: age, child: Text('$age'));
+                          }),
                           onChanged: (v) => setState(() => _idade = v),
-                          validator: (v) =>
-                              v == null ? 'Selecione a idade' : null,
+                          validator: (v) => v == null ? 'Selecione a idade' : null,
                         ),
                         const SizedBox(height: 14),
 
-                        const Text(
-                          'Ano escolar',
+                        const Text('Ano escolar',
                           style: TextStyle(
                             color: AppColors.explorer,
                             fontWeight: FontWeight.w700,
@@ -198,8 +199,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                           decoration: _fieldDecoration('Ex.: 5º ano, 7º ano...'),
                           validator: (v) =>
                               (v == null || v.trim().isEmpty)
-                                  ? 'Informe o ano escolar'
-                                  : null,
+                                  ? 'Informe o ano escolar' : null,
                         ),
                         const SizedBox(height: 20),
 
@@ -208,11 +208,13 @@ class _TelaCadastroState extends State<TelaCadastro> {
                           child: SizedBox(
                             width: 220,
                             child: HomeActionButton(
-                              label:
-                                  _saving ? 'CADASTRANDO...' : 'CADASTRAR',
+                              label: _saving ? 'CADASTRANDO...' : 'CADASTRAR',
                               background: AppColors.explorer,
                               textColor: Colors.black87,
-                              onPressed: _saving ? () {} : _onCadastrar,
+                              onPressed: () {
+                              if (_saving) return;
+                              _onCadastrar(); // Future, mas a callback é void
+                            },
                               height: 52,
                             ),
                           ),

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/api_cliente.dart';
+import '../models/trofeu.dart';
+
 import '../widgets/bottom_nav.dart';
 import '../widgets/interactive_map.dart';
 import '../models/map_spot.dart';
@@ -12,78 +16,115 @@ class TelaMapa extends StatefulWidget {
 }
 
 class _TelaMapaState extends State<TelaMapa> {
-  String? imagePath;
+  final _api = ApiClient();
   bool isLoading = true;
 
-  // Tamanho nativo do PNG do mapa (ajuste se usar outro asset)
   static const Size _mapSize = Size(395, 574);
 
-  // Hotspots já com as coordenadas normalizadas que você levantou
   final List<MapSpot> _spots = const [
-    MapSpot(id: 'arvore_1',  titulo: 'Árvore 1',  pos: Offset(0.6037, 0.8075)),
-    MapSpot(id: 'arvore_2',  titulo: 'Árvore 2',  pos: Offset(0.5555, 0.7551)),
-    MapSpot(id: 'arvore_3',  titulo: 'Árvore 3',  pos: Offset(0.5555, 0.6456)),
-    MapSpot(id: 'arvore_4',  titulo: 'Árvore 4',  pos: Offset(0.4851, 0.4345)),
-    MapSpot(id: 'arvore_5',  titulo: 'Árvore 5',  pos: Offset(0.3761, 0.2812)),
-    MapSpot(id: 'arvore_6',  titulo: 'Árvore 6',  pos: Offset(0.5275, 0.0476)),
-    MapSpot(id: 'arvore_7',  titulo: 'Árvore 7',  pos: Offset(0.2565, 0.1744)),
-    MapSpot(id: 'arvore_8',  titulo: 'Árvore 8',  pos: Offset(0.2440, 0.2162)),
-    MapSpot(id: 'arvore_9',  titulo: 'Árvore 9',  pos: Offset(0.0665, 0.2706)),
-    MapSpot(id: 'arvore_10', titulo: 'Árvore 10', pos: Offset(0.1273, 0.3038)),
-    MapSpot(id: 'arvore_11', titulo: 'Árvore 11', pos: Offset(0.3684, 0.6555)),
-    MapSpot(id: 'arvore_12', titulo: 'Árvore 12', pos: Offset(0.3173, 0.6800)),
-    MapSpot(id: 'arvore_13', titulo: 'Árvore 13', pos: Offset(0.3298, 0.7219)),
+    MapSpot(id: 'arvore_4850', titulo: 'Eritrina',          pos: Offset(0.6037, 0.8075)),
+    MapSpot(id: 'arvore_5433', titulo: 'Pau-Jacaré',        pos: Offset(0.5555, 0.7551)),
+    MapSpot(id: 'arvore_3957', titulo: 'Cambará',           pos: Offset(0.5555, 0.6456)),
+    MapSpot(id: 'arvore_4',    titulo: 'Ipê-Amarelo',       pos: Offset(0.4851, 0.4345)),
+    MapSpot(id: 'arvore_3994', titulo: 'Chuva-de-Ouro',     pos: Offset(0.3761, 0.2812)),
+    MapSpot(id: 'arvore_4040', titulo: 'Abricó-de-Macaco',  pos: Offset(0.5275, 0.0476)),
+    MapSpot(id: 'arvore_3846', titulo: 'Ipê-Branco',        pos: Offset(0.2565, 0.1744)),
+    MapSpot(id: 'arvore_1345', titulo: 'Jequitibá-Rosa',    pos: Offset(0.2440, 0.2162)),
+    MapSpot(id: 'arvore_1297', titulo: 'Coração-de-Negro',  pos: Offset(0.0665, 0.2706)),
+    MapSpot(id: 'arvore_1367', titulo: 'Seringueira',       pos: Offset(0.1273, 0.3038)),
+    MapSpot(id: 'arvore_1362', titulo: 'Escovinha',         pos: Offset(0.3684, 0.6555)),
+    MapSpot(id: 'arvore_3990', titulo: 'Flor-de-Abril',     pos: Offset(0.3173, 0.6800)),
+    MapSpot(id: 'arvore_593',  titulo: 'Imbiriçu',          pos: Offset(0.3298, 0.7219)),
   ];
 
-  int _nextNumber = 1;   // próxima árvore que o usuário deve visitar
-  String? _activeId;     // id da próxima (ex.: "arvore_3")
+  final List<int> _ordemDasArvores = const [4850, 5433, 3957, 4, 3994, 4040, 3846, 1345, 1297, 1367, 1362, 3990, 593];
+  
+  int? _nextTreeCode;
+  String? _activeId;
+  String? imagePath; // <-- Alterado de volta para 'imagePath' como no seu original
 
   @override
   void initState() {
     super.initState();
-    _loadState();
+    _loadProgressFromBackend();
   }
 
-  Future<void> _loadState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final nome = prefs.getString('nome_usuario') ?? 'usuário';
-    final key = 'arvores_lidas_$nome';
-    final lidas = prefs.getStringList(key) ?? [];
+  // [ALTERADO] A lógica de imagem progressiva foi restaurada aqui
+  Future<void> _loadProgressFromBackend() async {
+    setState(() => isLoading = true);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nickname = prefs.getString('ultimo_usuario');
 
-    // próxima = (quantas lidas) + 1, limitado ao total
-    _nextNumber = (lidas.length + 1).clamp(1, _spots.length);
-    _activeId = 'arvore_$_nextNumber';
-
-    // imagem de progresso (sua lógica antiga, mantida)
-    final qtdArvoresLidas = lidas.length + 1;
-    setState(() {
-      if (qtdArvoresLidas <= 0) {
-        imagePath = 'lib/assets/img/planta(1).png';
-      } else if (qtdArvoresLidas < 28) {
-        final numImagem = qtdArvoresLidas + 1;
-        imagePath = 'lib/assets/img/planta($numImagem).png';
-      } else {
-        imagePath = 'lib/assets/img/planta(1).png';
+      if (nickname == null) {
+        throw Exception("Usuário não logado");
       }
-      isLoading = false;
-    });
-  }
 
-  int _numeroDaArvore(MapSpot s) {
-    final m = RegExp(r'(\d+)$').firstMatch(s.id);
-    return m == null ? -1 : int.parse(m.group(1)!);
+      final List<Trofeu> userTrophies = await _api.listarTrofeus(nickname);
+      final Set<int> conqueredTreeCodes = userTrophies.map((t) => t.arvoreCodigo).toSet();
+
+      int? nextCode;
+      for (final treeCode in _ordemDasArvores) {
+        if (!conqueredTreeCodes.contains(treeCode)) {
+          nextCode = treeCode;
+          break;
+        }
+      }
+
+      // [LÓGICA RESTAURADA] Calcula o nome da imagem com base no número de troféus
+      String newImagePath;
+      final int arvoresConquistadas = userTrophies.length;
+
+      // Supondo que você tenha imagens como 'planta(1).png', 'planta(2).png', etc.
+      if (arvoresConquistadas >= _spots.length) {
+        // Trilha completa, talvez mostrar a planta final
+        newImagePath = 'lib/assets/img/planta_completa.png'; // Exemplo
+      } else {
+        // O número da imagem é a quantidade de árvores lidas + 1
+        final numImagem = arvoresConquistadas + 1;
+        newImagePath = 'lib/assets/img/planta($numImagem).png';
+      }
+
+      setState(() {
+        _nextTreeCode = nextCode;
+        _activeId = _nextTreeCode != null ? 'arvore_$_nextTreeCode' : null;
+        imagePath = newImagePath; // Define a imagem correta
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        _activeId = null;
+        imagePath = 'lib/assets/img/planta(1).png'; // Imagem padrão em caso de erro
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao buscar progresso: $e')),
+      );
+    }
+  }
+  
+  // O resto do seu código (onSpotTap, build, etc.) continua igual ao da última versão
+  
+  int _getCodigoDoSpot(MapSpot s) {
+    return int.tryParse(s.id.split('_').last) ?? -1;
   }
 
   void _onSpotTap(MapSpot s) {
-    final n = _numeroDaArvore(s);
-    final msgSel = 'Selecionou ${s.titulo} (#$n)';
-    debugPrint('🗺️ $msgSel'); // console
+    final codigoArvoreTocada = _getCodigoDoSpot(s);
 
-    if (n == _nextNumber) {
-      // feedback curto antes de abrir a câmera
+    if (_nextTreeCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Parabéns! Você concluiu a trilha!')),
+      );
+      return;
+    }
+
+    if (codigoArvoreTocada == _nextTreeCode) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$msgSel — abrindo câmera...'),
+          content: Text('Você selecionou ${s.titulo}! Abrindo câmera...'),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(milliseconds: 900),
         ),
@@ -95,18 +136,17 @@ class _TelaMapaState extends State<TelaMapa> {
           context,
           '/qrcode',
           arguments: {
-            'arvoreId': s.id,
+            'trilha': 'Árvores Úteis',
+            'arvoreCodigo': codigoArvoreTocada,
             'titulo': s.titulo,
-            'numero': n,
           },
         );
       });
-    } else if (n > 0) {
+    } else {
+      final proximoSpot = _spots.firstWhere((spot) => _getCodigoDoSpot(spot) == _nextTreeCode, orElse: () => s);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Esta é ${s.titulo}. Sua próxima visita é para a Árvore $_nextNumber.',
-          ),
+          content: Text('Esta é a ${s.titulo}. Sua próxima visita é na ${proximoSpot.titulo}.'),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
         ),
@@ -125,10 +165,8 @@ class _TelaMapaState extends State<TelaMapa> {
               ? const CircularProgressIndicator(color: Colors.white)
               : LayoutBuilder(
                   builder: (context, constraints) {
-                    // centraliza com largura ~90% da tela
                     final baseWidth = constraints.maxWidth * 0.9;
-                    final baseHeight =
-                        baseWidth / (_mapSize.width / _mapSize.height);
+                    final baseHeight = baseWidth / (_mapSize.width / _mapSize.height);
                     return SizedBox(
                       width: baseWidth,
                       height: baseHeight,
@@ -138,13 +176,12 @@ class _TelaMapaState extends State<TelaMapa> {
                         spots: _spots,
                         onSpotTap: _onSpotTap,
                         activeId: _activeId,
-                        adaptiveHit: true,   // hitbox continua adaptativa para facilitar o clique
+                        adaptiveHit: true,
                         minHitPx: 18,
                         maxHitPx: 34,
                         hitRatio: 0.38,
-                        activeRingRadiusPx: 15,         // <- anel SEMPRE do mesmo tamanho (menor)
-                        activeRingStroke: 2.5,          // opcional
-                        // activeRingColor: Colors.white.withOpacity(0.9), // opcional
+                        activeRingRadiusPx: 15,
+                        activeRingStroke: 2.5,
                       ),
                     );
                   },

@@ -25,8 +25,16 @@ class QRCodeWeb extends StatelessWidget {
       ),
       body: Center(
         child: ElevatedButton(
+          // [ALTERADO] A navegação agora envia os argumentos necessários
           onPressed: () {
-            Navigator.pushNamed(context, '/quiz');
+            Navigator.pushNamed(
+              context,
+              '/quiz',
+              arguments: {
+                'trilha': 'Árvores Úteis', // Simula a trilha
+                'arvoreCodigo': 4850,      // Simula a 1ª árvore (Eritrina)
+              },
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.pink[300],

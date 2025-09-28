@@ -54,6 +54,14 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
+# --- Início do bloco para encontrar GStreamer ---
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+
+# Adiciona os diretórios de include do GStreamer ao projeto
+include_directories(${GSTREAMER_INCLUDE_DIRS})
+# --- Fim do bloco ---
+
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 

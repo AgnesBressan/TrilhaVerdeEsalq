@@ -1,23 +1,160 @@
+// lib/screens/tela_dicas.dart
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
+import '../services/api_cliente.dart';
+import '../models/arvore.dart';
+import '../models/pergunta.dart';
 
-class TelaDicas extends StatelessWidget {
+class TelaDicas extends StatefulWidget {
   const TelaDicas({super.key});
+  @override
+  State<TelaDicas> createState() => _TelaDicasState();
+}
+
+class _TelaDicasState extends State<TelaDicas> {
+  final _api = ApiClient();
+  late final AudioPlayer _player;
+
+  PlayerState? _playerState;
+
+  String? _trilha;
+  int? _arvoreCodigo;
+  Arvore? _arvore;
+  Pergunta? _perguntaSelecionada;
+  bool _loading = true;
+  String? _error;
+  bool _gotArgs = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+
+    _player.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _playerState = state;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_gotArgs) return;
+    _gotArgs = true;
+
+    final args = (ModalRoute.of(context)?.settings.arguments as Map?) ?? {};
+    _trilha = args['trilha'] as String?;
+    _arvoreCodigo = args['arvoreCodigo'] as int?;
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      if (_trilha == null || _arvoreCodigo == null) {
+        throw Exception('Parâmetros ausentes (trilha/código).');
+      }
+
+      final resultados = await Future.wait([
+        _api.listarPerguntas(trilha: _trilha!, arvoreCodigo: _arvoreCodigo!),
+        _api.obterArvore(_trilha!, _arvoreCodigo!),
+      ]);
+
+      final perguntas = resultados[0] as List<Pergunta>;
+      final arvore = resultados[1] as Arvore;
+
+      Pergunta? perguntaSorteada;
+      if (perguntas.isNotEmpty) {
+        final random = Random();
+        perguntaSorteada = perguntas[random.nextInt(perguntas.length)];
+      }
+
+      setState(() {
+        _arvore = arvore;
+        _perguntaSelecionada = perguntaSorteada;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Falha ao carregar dados: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  // A LÓGICA DE TOCAR/PAUSAR FOI CENTRALIZADA E CORRIGIDA AQUI
+  Future<void> _toggleAudioPlayback() async {
+    const baseUrl = 'http://localhost:3001'; // Para emulador Android, use 'http://10.0.2.2:3001'
+
+    final audioPath = _perguntaSelecionada?.audioUrl;
+    if (audioPath == null || audioPath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum áudio disponível.')),
+      );
+      return;
+    }
+
+    if (_playerState == PlayerState.playing) {
+      await _player.pause();
+    } else {
+      String finalUrl;
+      // VERIFICA SE O CAMINHO JÁ É UMA URL COMPLETA
+      if (audioPath.startsWith('http')) {
+        finalUrl = audioPath;
+      } else {
+        // SE NÃO FOR, MONTA A URL COMPLETA COM O BASEURL
+        finalUrl = baseUrl + audioPath;
+      }
+      await _player.play(UrlSource(finalUrl));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ??
-            {};
-    final arvoreId = args['arvoreId'] as String? ?? 'desconhecida';
-    final titulo   = args['titulo'] as String? ?? 'Árvore';
-    final numero   = args['numero'] as int?;
-    final qr       = args['qr'] as String?; // se quiser usar
-
-    final nomeArvore = numero != null ? 'Árvore $numero' : titulo;
-
     final w = MediaQuery.of(context).size.width;
+
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 12),
+              AppButton(label: 'Tentar novamente', onPressed: _load),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final nomeArvore = _arvore?.nome ?? 'Árvore ${_arvoreCodigo ?? ''}';
+    final especie = (_arvore?.especie ?? '').trim();
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -27,11 +164,11 @@ class TelaDicas extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título “Parabéns…”
+              // Título
               RichText(
-                text: TextSpan(
+                text: const TextSpan(
                   children: [
-                    const TextSpan(
+                    TextSpan(
                       text: 'Parabéns, ',
                       style: TextStyle(
                         color: AppColors.explorer,
@@ -40,8 +177,8 @@ class TelaDicas extends StatelessWidget {
                         fontSize: 18,
                       ),
                     ),
-                    const TextSpan(
-                      text: 'você leu o qr code da seguinte árvore:',
+                    TextSpan(
+                      text: 'você leu o QR code da seguinte árvore:',
                       style: TextStyle(
                         color: AppColors.explorer,
                         fontWeight: FontWeight.w400,
@@ -58,17 +195,28 @@ class TelaDicas extends StatelessWidget {
               Text(
                 nomeArvore,
                 style: const TextStyle(
-                  color: AppColors.preparedText, // laranja
+                  color: AppColors.preparedText,
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'Poppins',
                   height: 1.05,
                 ),
               ),
+              if (especie.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  especie,
+                  style: const TextStyle(
+                    color: Color(0xFF4B4B4B),
+                    fontSize: 14.5,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 50),
 
-              // BALÃO + MASCOTE (mesma base da home)
+              // Balão + mascote
               SizedBox(
                 height: 210,
                 width: double.infinity,
@@ -87,7 +235,7 @@ class TelaDicas extends StatelessWidget {
                             topLeft: Radius.circular(20),
                             topRight: Radius.circular(20),
                             bottomRight: Radius.circular(20),
-                            bottomLeft: Radius.zero, // canto inf. esquerdo sem raio
+                            bottomLeft: Radius.zero,
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -116,14 +264,11 @@ class TelaDicas extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // Descrição (placeholder)
-              const Text(
-                'Lorem ipsum is simply dummy text of the printing and typesetting industry. '
-                'Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s, '
-                'when an unknown printer took a galley of type and scrambled it to make a type specimen book. '
-                'It has survived not only five centuries, but also the leap into electronic typesetting, '
-                'remaining essentially unchanged.',
-                style: TextStyle(
+              // Descrição vinda da pergunta
+              Text(
+                _perguntaSelecionada?.texto ??
+                    'Nenhuma descrição disponível para esta árvore.',
+                style: const TextStyle(
                   fontSize: 14.5,
                   height: 1.45,
                   color: Color(0xFF4B4B4B),
@@ -132,7 +277,7 @@ class TelaDicas extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // Caixa de áudio (UI simples)
+              // Caixa de áudio funcional
               Center(
                 child: Container(
                   padding:
@@ -144,30 +289,18 @@ class TelaDicas extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Botão play
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Play de áudio'),
-                                duration: Duration(milliseconds: 800),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.play_arrow_rounded,
-                              color: AppColors.play),
+                      IconButton(
+                        onPressed: _toggleAudioPlayback,
+                        iconSize: 30,
+                        icon: Icon(
+                          _playerState == PlayerState.playing
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: AppColors.play,
                         ),
                       ),
-                      // Waveform (imagem)
-                      Image.asset(
-                        'lib/assets/img/sound.png',
-                        height: 30,
-                        fit: BoxFit.contain,
-                      ),
+                      Image.asset('lib/assets/img/sound.png',
+                          height: 30, fit: BoxFit.contain),
                     ],
                   ),
                 ),
@@ -178,8 +311,18 @@ class TelaDicas extends StatelessWidget {
               // Botão "RESPONDER A PERGUNTA"
               Center(
                 child: AppButton(
-                  label: 'RESPONDER A PERGUNTA',
-                  onPressed: () => Navigator.pushNamed(context, '/quiz'),
+                  label: _perguntaSelecionada == null
+                      ? 'SEM PERGUNTAS NESTA ÁRVORE'
+                      : 'RESPONDER A PERGUNTA',
+                  onPressed: _perguntaSelecionada == null
+                      ? null
+                      : () => Navigator.pushNamed(
+                            context,
+                            '/quiz',
+                            arguments: {
+                              'pergunta': _perguntaSelecionada!,
+                            },
+                          ),
                 ),
               ),
             ],
