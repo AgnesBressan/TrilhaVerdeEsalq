@@ -17,7 +17,6 @@ class _TelaQuizState extends State<TelaQuiz> {
   final _api = ApiClient();
   bool _gotArgs = false;
 
-  // [ALTERADO] Agora a tela lida com apenas uma pergunta, recebida como argumento.
   Pergunta? _pergunta; 
   String? _opcaoSelecionadaKey; 
   bool _isSubmitting = false; 
@@ -28,14 +27,13 @@ class _TelaQuizState extends State<TelaQuiz> {
     if (_gotArgs) return;
     _gotArgs = true;
 
-    // [ALTERADO] Recebe o objeto 'Pergunta' completo, enviado pela TelaDicas.
     final args = (ModalRoute.of(context)?.settings.arguments as Map?) ?? {};
     setState(() {
       _pergunta = args['pergunta'] as Pergunta?;
     });
   }
   
-  // Lógica principal ao confirmar uma resposta
+  // [LÓGICA DE VITÓRIA ADICIONADA AQUI]
   Future<void> _onConfirmarResposta() async {
     if (_opcaoSelecionadaKey == null || _isSubmitting || _pergunta == null) return;
 
@@ -48,12 +46,24 @@ class _TelaQuizState extends State<TelaQuiz> {
         final prefs = await SharedPreferences.getInstance();
         final nickname = prefs.getString('ultimo_usuario');
         if (nickname != null) {
-          // Salva o troféu usando os dados da pergunta recebida
+          // 1. Salva o troféu da árvore atual
           await _api.salvarTrofeu(nickname, _pergunta!.trilhaNome, _pergunta!.arvoreCodigo);
+          
+          // 2. Busca os dados atualizados para verificar se o jogo acabou
+          final trofeus = await _api.listarTrofeus(nickname);
+          final totalArvores = await _api.obterTotalArvores();
+
+          if (!mounted) return;
+
+          // 3. Compara o número de troféus com o total de árvores
+          if (trofeus.length >= totalArvores) {
+            // JOGO GANHO! Navega para a tela de vitória.
+            Navigator.pushReplacementNamed(context, '/ganhou');
+          } else {
+            // Ainda não acabou, navega para a tela de acerto normal.
+            Navigator.pushReplacementNamed(context, '/acertou');
+          }
         }
-        
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/acertou');
       } else {
         if (!mounted) return;
         // Navega para a tela de erro, passando a URL da dica em áudio
@@ -73,10 +83,9 @@ class _TelaQuizState extends State<TelaQuiz> {
     }
   }
 
-  // Constrói a lista de widgets de opção a partir da pergunta
+  // A função _buildOptions e o resto da classe permanecem os mesmos
   List<Widget> _buildOptions(Pergunta p) {
     final options = <_OpcaoData>[];
-    // Adiciona apenas as opções que não são nulas
     if (p.itemA != null && p.itemA!.isNotEmpty) options.add(_OpcaoData('A', p.itemA!));
     if (p.itemB != null && p.itemB!.isNotEmpty) options.add(_OpcaoData('B', p.itemB!));
     if (p.itemC != null && p.itemC!.isNotEmpty) options.add(_OpcaoData('C', p.itemC!));
@@ -101,7 +110,6 @@ class _TelaQuizState extends State<TelaQuiz> {
 
   @override
   Widget build(BuildContext context) {
-    // [SIMPLIFICADO] A tela agora só precisa verificar se recebeu a pergunta.
     if (_pergunta == null) {
       return const Scaffold(
         backgroundColor: AppColors.bg,
@@ -114,7 +122,6 @@ class _TelaQuizState extends State<TelaQuiz> {
       body: SafeArea(
         child: Stack(
           children: [
-            // ... (seu layout de nuvens pode continuar aqui)
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -140,7 +147,7 @@ class _TelaQuizState extends State<TelaQuiz> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    ..._buildOptions(_pergunta!), // Constrói as opções dinamicamente
+                    ..._buildOptions(_pergunta!),
                     const SizedBox(height: 20),
                     AppButton(
                       label: _isSubmitting ? 'VERIFICANDO...' : 'CONFIRMAR',
@@ -157,14 +164,12 @@ class _TelaQuizState extends State<TelaQuiz> {
   }
 }
 
-// Classe auxiliar para os dados da opção
 class _OpcaoData {
   final String key;
   final String titulo;
   const _OpcaoData(this.key, this.titulo);
 }
 
-// Widget da opção
 class _OpcaoTile extends StatelessWidget {
   final String titulo;
   final bool isSelected;

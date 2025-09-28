@@ -239,6 +239,18 @@ class ApiClient {
     }
   }
 
+  Future<void> reiniciarProgresso(String nickname) async {
+    final t = await _getToken();
+    final r = await _http.delete(
+      _u('/api/usuarios/$nickname/trofeus'),
+      headers: _headers(token: t),
+    );
+
+    if (r.statusCode != 204) {
+      throw Exception('Falha ao reiniciar o progresso');
+    }
+  }
+
   // ================== Sessão ==================
   Future<void> sair() async {
     final p = await _prefs;

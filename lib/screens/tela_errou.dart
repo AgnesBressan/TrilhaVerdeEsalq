@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart'; // Importa o pacote de áudio
+import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 
 class TelaErrou extends StatefulWidget {
-  final String? audioDicaUrl; // Propriedade para receber a URL da dica
+  final String? audioDicaUrl;
 
   const TelaErrou({super.key, required this.audioDicaUrl});
 
@@ -14,11 +14,21 @@ class TelaErrou extends StatefulWidget {
 
 class _TelaErrouState extends State<TelaErrou> {
   late final AudioPlayer player;
+  PlayerState? _playerState; // [NOVO] Variável para guardar o estado do player
 
   @override
   void initState() {
     super.initState();
     player = AudioPlayer();
+
+    // [NOVO] Ouve as mudanças de estado (tocando, pausado, etc.)
+    player.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _playerState = state;
+        });
+      }
+    });
   }
 
   @override
@@ -27,13 +37,19 @@ class _TelaErrouState extends State<TelaErrou> {
     super.dispose();
   }
 
-  Future<void> _playAudio() async {
-    if (widget.audioDicaUrl != null && widget.audioDicaUrl!.isNotEmpty) {
-      await player.play(UrlSource(widget.audioDicaUrl!));
-    } else {
+  // [ALTERADO] A função agora alterna entre tocar e pausar
+  Future<void> _toggleAudioPlayback() async {
+    if (widget.audioDicaUrl == null || widget.audioDicaUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nenhuma dica em áudio disponível.')),
       );
+      return;
+    }
+
+    if (_playerState == PlayerState.playing) {
+      await player.pause();
+    } else {
+      await player.play(UrlSource(widget.audioDicaUrl!));
     }
   }
 
@@ -85,7 +101,6 @@ class _TelaErrouState extends State<TelaErrou> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 8),
                     const Text(
                       'VOCÊ ERROU,\nOUÇA A DICA E\nTENTE NOVAMENTE',
                       textAlign: TextAlign.center,
@@ -95,18 +110,11 @@ class _TelaErrouState extends State<TelaErrou> {
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
-                        letterSpacing: 0.3,
                       ),
                     ),
                     const SizedBox(height: 22),
-
-                    Image.asset(
-                      'lib/assets/img/errou.png',
-                      width: 190,
-                      fit: BoxFit.contain,
-                    ),
+                    Image.asset('lib/assets/img/errou.png', width: 190),
                     const SizedBox(height: 22),
-
                     Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -117,18 +125,18 @@ class _TelaErrouState extends State<TelaErrou> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // [ALTERADO] Lógica do botão Play/Pause
                             IconButton(
-                              onPressed: _playAudio, // [ALTERADO] Chama a função de tocar áudio
-                              icon: const Icon(
-                                Icons.play_arrow_rounded,
+                              onPressed: _toggleAudioPlayback,
+                              iconSize: 30,
+                              icon: Icon(
+                                _playerState == PlayerState.playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
                                 color: AppColors.play,
                               ),
                             ),
-                            Image.asset(
-                              'lib/assets/img/sound.png',
-                              height: 30,
-                              fit: BoxFit.contain,
-                            ),
+                            Image.asset('lib/assets/img/sound.png', height: 30),
                           ],
                         ),
                       ),
@@ -136,16 +144,13 @@ class _TelaErrouState extends State<TelaErrou> {
 
                     const SizedBox(height: 20),
 
-                    SizedBox(
-                      child: AppButton(
-                        label: 'TENTAR NOVAMENTE',
-                        onPressed: () {
-                          // [ALTERADO] A melhor forma é voltar para a tela anterior
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          }
-                        },
-                      ),
+                    AppButton(
+                      label: 'TENTAR NOVAMENTE',
+                      onPressed: () {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
                   ],
                 ),

@@ -1,17 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_cliente.dart'; // [NOVO] Importa o cliente da API
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 
-class TelaGanhou extends StatelessWidget {
+class TelaGanhou extends StatefulWidget { // [ALTERADO] Para StatefulWidget
   const TelaGanhou({super.key});
 
-  Future<void> _reiniciarJogo(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final nome = prefs.getString('nome_usuario') ?? 'Usuário';
-    await prefs.remove('arvores_lidas_$nome'); // zera progresso
-    if (context.mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/principal', (r) => false);
+  @override
+  State<TelaGanhou> createState() => _TelaGanhouState();
+}
+
+class _TelaGanhouState extends State<TelaGanhou> {
+  final _api = ApiClient();
+  bool _isResetting = false; // [NOVO] Estado para o botão
+
+  // [LÓGICA CORRIGIDA]
+  Future<void> _reiniciarJogo() async {
+    setState(() => _isResetting = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nickname = prefs.getString('ultimo_usuario');
+
+      if (nickname != null) {
+        // Chama a API para apagar os troféus do backend
+        await _api.reiniciarProgresso(nickname);
+      }
+
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/principal', (r) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao reiniciar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResetting = false);
+      }
     }
   }
 
@@ -24,7 +52,7 @@ class TelaGanhou extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            // ===== NUVENS (mesmas posições da tela Acertou) =====
+            // ===== NUVENS =====
             Positioned(
               top: 40,
               left: 200,
@@ -89,19 +117,18 @@ class TelaGanhou extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
-
                     Image.asset(
-                      'lib/assets/img/ganhou.png', // <- ajuste o nome do asset se necessário
+                      'lib/assets/img/ganhou.png',
                       width: 210,
                       fit: BoxFit.contain,
                     ),
-
                     const SizedBox(height: 26),
                     SizedBox(
                       width: 200,
                       child: AppButton(
-                        label: 'REINICIAR JOGO',
-                        onPressed: () => _reiniciarJogo(context),
+                        // [ALTERADO] Lógica do botão
+                        label: _isResetting ? 'REINICIANDO...' : 'REINICIAR JOGO',
+                        onPressed: _isResetting ? null : _reiniciarJogo,
                       ),
                     ),
                   ],
