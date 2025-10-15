@@ -41,34 +41,38 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final nickname = prefs.getString('ultimo_usuario');
+      final String trilhaPadrao = 'Árvores Úteis'; // Use a trilha correta
 
       if (nickname == null) {
         setState(() => _isLoading = false);
         return;
       }
 
-      // ALTERADO: Busca os troféus, o total de árvores e os dados do usuário em paralelo
+      // NOVO: Busca todas as árvores ATIVAS para obter a contagem total correta
+      final arvoreListAtivas = await _api.listarArvores(
+        trilha: trilhaPadrao, 
+        ativas: true,
+      );
+
+      // ALTERADO: Busca troféus e dados do usuário em paralelo
       final resultados = await Future.wait([
         _api.listarTrofeus(nickname),
-        _api.obterTotalArvores(),
-        _api.obterUsuario(nickname), // <-- Adicionado para buscar os dados do usuário
+        _api.obterUsuario(nickname),
       ]);
 
       if (!mounted) return;
       setState(() {
         trofeus = resultados[0] as List<Trofeu>;
-        totalArvores = resultados[1] as int;
-        _usuario = resultados[2] as Usuario?; // <-- Armazena o usuário no estado
+        totalArvores = arvoreListAtivas.length; // <--- USAMOS O TAMANHO DA LISTA ATIVA!
+        _usuario = resultados[1] as Usuario?;
       });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar pontuação: $e')),
-      );
+      // ... (tratamento de erro)
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   void _showDebugSheet() {
     if (!kDebugMode) return;

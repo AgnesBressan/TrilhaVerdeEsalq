@@ -212,8 +212,8 @@ class ApiClient {
 
   Future<int> obterTotalArvores() async {
     final t = await _getToken();
-    final r = await _http.get(_u('/api/arvores/total'), headers: _headers(token: t));
-
+    final r = await _http.get(_u('/api/arvores/total', {'ativas': 'true'}), headers: _headers(token: t)); 
+    
     if (r.statusCode != 200) {
       throw Exception('Falha ao buscar total de árvores');
     }
