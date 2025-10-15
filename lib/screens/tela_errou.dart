@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
+import '../models/pergunta.dart'; // Importa o modelo Pergunta
 
 class TelaErrou extends StatefulWidget {
-  final String? audioDicaUrl;
+  final Pergunta pergunta;
 
-  const TelaErrou({super.key, required this.audioDicaUrl});
+  const TelaErrou({super.key, required this.pergunta});
 
   @override
   State<TelaErrou> createState() => _TelaErrouState();
@@ -14,14 +15,13 @@ class TelaErrou extends StatefulWidget {
 
 class _TelaErrouState extends State<TelaErrou> {
   late final AudioPlayer player;
-  PlayerState? _playerState; // [NOVO] Variável para guardar o estado do player
+  PlayerState? _playerState; 
 
   @override
   void initState() {
     super.initState();
     player = AudioPlayer();
 
-    // [NOVO] Ouve as mudanças de estado (tocando, pausado, etc.)
     player.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() {
@@ -33,13 +33,15 @@ class _TelaErrouState extends State<TelaErrou> {
 
   @override
   void dispose() {
+    player.stop(); 
     player.dispose();
     super.dispose();
   }
 
-  // [ALTERADO] A função agora alterna entre tocar e pausar
   Future<void> _toggleAudioPlayback() async {
-    if (widget.audioDicaUrl == null || widget.audioDicaUrl!.isEmpty) {
+    final audioDicaUrl = widget.pergunta.audioDicaUrl;
+
+    if (audioDicaUrl == null || audioDicaUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nenhuma dica em áudio disponível.')),
       );
@@ -49,20 +51,20 @@ class _TelaErrouState extends State<TelaErrou> {
     if (_playerState == PlayerState.playing) {
       await player.pause();
     } else {
-      await player.play(UrlSource(widget.audioDicaUrl!));
+      await player.play(UrlSource(audioDicaUrl));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-
+    final dicaTexto = widget.pergunta.dica ?? 'Nenhuma dica disponível.'; // Puxa o campo 'dica'
+    
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Stack(
           children: [
-            // ===== NUVENS =====
             Positioned(
               top: 40,
               left: 200,
@@ -94,7 +96,6 @@ class _TelaErrouState extends State<TelaErrou> {
               child: Image.asset('lib/assets/img/grande_nuvem.png', width: 100),
             ),
             
-            // ===== CONTEÚDO =====
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -115,6 +116,23 @@ class _TelaErrouState extends State<TelaErrou> {
                     const SizedBox(height: 22),
                     Image.asset('lib/assets/img/errou.png', width: 190),
                     const SizedBox(height: 22),
+                    
+                    // [TEXTO DA DICA]
+                    Container(
+                      constraints: BoxConstraints(maxWidth: size.width * 0.85),
+                      child: Text(
+                        dicaTexto,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: Color(0xFF4B4B4B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+
+
                     Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -125,7 +143,6 @@ class _TelaErrouState extends State<TelaErrou> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // [ALTERADO] Lógica do botão Play/Pause
                             IconButton(
                               onPressed: _toggleAudioPlayback,
                               iconSize: 30,

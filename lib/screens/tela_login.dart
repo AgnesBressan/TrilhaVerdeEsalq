@@ -3,10 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/home_action_button.dart';
-
-// NEW: cliente HTTP da API
 import '../services/api_cliente.dart';
-// (Opcional) se você quiser passar o objeto para a próxima tela
 import '../models/usuario.dart';
 
 class TelaLogin extends StatefulWidget {
@@ -36,21 +33,17 @@ class _TelaLoginState extends State<TelaLogin> {
     final nick = _nickController.text.trim();
 
     try {
-      // tenta buscar no banco
       final Usuario? user = await _api.obterUsuario(nick);
 
       if (user != null) {
-        // guarda só o último usuário localmente (qualquer outra info vem da API)
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('ultimo_usuario', nick);
 
         if (!mounted) return;
-        // se quiser, passe o user como argumento
         Navigator.pushReplacementNamed(context, '/principal', arguments: user);
         return;
       }
 
-      // se não existe, oferece ir para cadastro
       if (!mounted) return;
       final bool? cadastrar = await showDialog<bool>(
         context: context,
@@ -71,7 +64,6 @@ class _TelaLoginState extends State<TelaLogin> {
       );
 
       if (cadastrar == true && mounted) {
-        // vai para cadastro já com o nickname digitado
         Navigator.pushReplacementNamed(
           context,
           '/cadastro',
@@ -97,7 +89,15 @@ class _TelaLoginState extends State<TelaLogin> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Nuvens
+            Positioned(
+              top: 10,
+              left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.explorer, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            
             Positioned(
               top: 40,
               left: 24,
@@ -129,7 +129,6 @@ class _TelaLoginState extends State<TelaLogin> {
               child: Image.asset('lib/assets/img/pequena_nuvem.png', width: 64),
             ),
 
-            // Painel central
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),

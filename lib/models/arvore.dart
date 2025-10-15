@@ -4,6 +4,7 @@ class Arvore {
   final String trilhaNome;
   final int codigo;
   final String nome;
+  final int ordem;
   final String? especie; // String? é mais seguro que String
   final bool ativa;
   final double? posX;
@@ -15,6 +16,7 @@ class Arvore {
     required this.trilhaNome,
     required this.codigo,
     required this.nome,
+    required this.ordem,
     this.especie,
     required this.ativa,
     this.posX,
@@ -23,8 +25,6 @@ class Arvore {
     this.quantidadePerguntas = 0,
   });
 
-  // [NOVO] Esta função converte qualquer tipo de dado (String, int, double) para double.
-  // É a forma mais segura de lidar com o JSON.
   static double? _parseDouble(dynamic value) {
     if (value == null) return null;
     if (value is double) return value;
@@ -37,6 +37,7 @@ class Arvore {
   factory Arvore.fromJson(Map<String, dynamic> j) {
     return Arvore(
       trilhaNome: j['trilha_nome'],
+      ordem: (j['ordem'] as num?)?.toInt() ?? 999,
       codigo: (j['codigo'] as num).toInt(),
       nome: j['nome'] ?? '',
       especie: j['especie'],

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../services/api_cliente.dart';        // <-- usa sua API
+import '../services/api_cliente.dart';      
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/bottom_nav.dart';
@@ -19,8 +19,8 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   final _api = ApiClient();
 
   String _nomeUsuario = 'Usuário';
-  File? _avatarFile;            // desktop/mobile
-  Uint8List? _avatarBytes;      // web/qualquer
+  File? _avatarFile;         
+  Uint8List? _avatarBytes;    
   bool _loading = true;
 
   @override
@@ -35,19 +35,17 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // 1) tenta pegar do backend
-      final me = await _api.fetchMe();           // { email, nome, vinculo } ou null
-      final avatar = await _api.fetchAvatar();   // bytes ou null
+      final me = await _api.fetchMe();       
+      final avatar = await _api.fetchAvatar(); 
 
       if (me != null) {
         _nomeUsuario = (me['nome'] as String?)?.trim().isNotEmpty == true
             ? (me['nome'] as String).trim()
-            : // fallback: se não tiver "nome", usa último nickname salvo
+            : 
               (prefs.getString('ultimo_usuario') ??
                   prefs.getString('nome_usuario') ??
                   'Usuário');
       } else {
-        // 2) fallback local (sem backend/logado)
         final ultimo = prefs.getString('ultimo_usuario');
         final nome = prefs.getString('nome_usuario');
         _nomeUsuario = (ultimo?.trim().isNotEmpty ?? false)
@@ -59,7 +57,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
 
     
     } catch (e) {
-      // silencioso: se der ruim no backend, continua com fallback
       final prefs = await SharedPreferences.getInstance();
       final ultimo = prefs.getString('ultimo_usuario');
       final nome = prefs.getString('nome_usuario');
@@ -101,7 +98,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     ),
                     const SizedBox(height: 15),
 
-                    // Saudação + avatar (opcional)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -166,7 +162,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     ),
                     const SizedBox(height: 50),
 
-                    // Balão de fala + mascote
                     SizedBox(
                       height: 250,
                       width: double.infinity,

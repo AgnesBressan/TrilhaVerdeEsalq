@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/home_action_button.dart';
 import '../models/usuario.dart';
-// >>> ADICIONE:
 import '../services/api_cliente.dart';
-import '../models/usuario.dart';
+
+class ApiConflictError implements Exception {} 
 
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
@@ -19,8 +20,8 @@ class _TelaCadastroState extends State<TelaCadastro> {
   final _formKey = GlobalKey<FormState>();
   final _nomeCtrl = TextEditingController();
   final _nickCtrl = TextEditingController();
-  final _anoCtrl  = TextEditingController();
-  int? _idade;
+  final _anoCtrl = TextEditingController();
+  final _idadeCtrl = TextEditingController();
   bool _saving = false;
 
   final _api = ApiClient();
@@ -30,33 +31,34 @@ class _TelaCadastroState extends State<TelaCadastro> {
     _nomeCtrl.dispose();
     _nickCtrl.dispose();
     _anoCtrl.dispose();
+    _idadeCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _onCadastrar() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    final idadeInt = int.tryParse(_idadeCtrl.text.trim());
+    if (idadeInt == null) return; 
     setState(() => _saving = true);
 
     final usuario = Usuario(
       nickname: _nickCtrl.text.trim(),
       nome: _nomeCtrl.text.trim(),
-      idade: _idade!,
+      idade: idadeInt,
       anoEscolar: _anoCtrl.text.trim(),
       numArvoresVisitadas: 0,
     );
 
     try {
-      // chama o backend
-      await _api.salvarUsuario(usuario); // cria ou atualiza
+      await _api.salvarUsuario(usuario);
 
-      // opcional: guardar quem é o último usuário logado
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('ultimo_usuario', usuario.nickname);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/principal', arguments: usuario);
     } on ApiConflictError catch (_) {
-      // 409 (nickname já existe)
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Este nickname já está em uso.')),
@@ -97,6 +99,15 @@ class _TelaCadastroState extends State<TelaCadastro> {
       body: SafeArea(
         child: Stack(
           children: [
+            Positioned(
+              top: 10,
+              left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.explorer, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            
             Positioned(top: 36, left: 26,
               child: Image.asset('lib/assets/img/grande_nuvem.png', width: 96)),
             Positioned(top: 86, right: 34,
@@ -116,110 +127,93 @@ class _TelaCadastroState extends State<TelaCadastro> {
                   ),
                   child: Form(
                     key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Center(
-                          child: Text('Cadastro',
-                            style: TextStyle(
-                              color: AppColors.welcome,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
+                    child: SingleChildScrollView( // Usar SingleChildScrollView para evitar overflow em telas pequenas
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 10.0, bottom: 6.0),
+                              child: Text('Cadastro',
+                                style: TextStyle(
+                                  color: AppColors.welcome,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
 
-                        const Text('Nome',
-                          style: TextStyle(
-                            color: AppColors.explorer,
-                            fontWeight: FontWeight.w700,
+                          const Text('Nome', style: TextStyle(color: AppColors.explorer, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _nomeCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _fieldDecoration('Seu nome'),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nome' : null,
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _nomeCtrl,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: _fieldDecoration('Seu nome'),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty)
-                                  ? 'Informe o nome' : null,
-                        ),
-                        const SizedBox(height: 14),
+                          const SizedBox(height: 14),
 
-                        const Text('Nickname',
-                          style: TextStyle(
-                            color: AppColors.explorer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _nickCtrl,
-                          decoration: _fieldDecoration('Seu nickname no app'),
-                          validator: (v) {
-                            final t = v?.trim() ?? '';
-                            if (t.isEmpty) return 'Informe um nickname';
-                            if (t.length > 24) return 'Máximo 24 caracteres';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text('Idade',
-                          style: TextStyle(
-                            color: AppColors.explorer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        DropdownButtonFormField<int>(
-                          value: _idade,
-                          decoration: _fieldDecoration('Selecione sua idade'),
-                          items: List.generate(58, (i) {
-                            final age = 3 + i; // 3..60
-                            return DropdownMenuItem(
-                              value: age, child: Text('$age'));
-                          }),
-                          onChanged: (v) => setState(() => _idade = v),
-                          validator: (v) => v == null ? 'Selecione a idade' : null,
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text('Ano escolar',
-                          style: TextStyle(
-                            color: AppColors.explorer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _anoCtrl,
-                          decoration: _fieldDecoration('Ex.: 5º ano, 7º ano...'),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty)
-                                  ? 'Informe o ano escolar' : null,
-                        ),
-                        const SizedBox(height: 20),
-
-                        Align(
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: 220,
-                            child: HomeActionButton(
-                              label: _saving ? 'CADASTRANDO...' : 'CADASTRAR',
-                              background: AppColors.explorer,
-                              textColor: Colors.black87,
-                              onPressed: () {
-                              if (_saving) return;
-                              _onCadastrar(); // Future, mas a callback é void
+                          const Text('Nickname', style: TextStyle(color: AppColors.explorer, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _nickCtrl,
+                            decoration: _fieldDecoration('Seu nickname no app'),
+                            validator: (v) {
+                              final t = v?.trim() ?? '';
+                              if (t.isEmpty) return 'Informe um nickname';
+                              if (t.length > 24) return 'Máximo 24 caracteres';
+                              return null;
                             },
-                              height: 52,
+                          ),
+                          const SizedBox(height: 14),
+
+                          const Text('Idade', style: TextStyle(color: AppColors.explorer, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _idadeCtrl, // NOVO CONTROLADOR
+                            keyboardType: TextInputType.number,
+                            decoration: _fieldDecoration('Digite sua idade'),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly, // Aceita apenas dígitos
+                              LengthLimitingTextInputFormatter(3),     // Limita a 3 dígitos (até 999 anos)
+                            ],
+                            validator: (v) {
+                              final age = int.tryParse(v?.trim() ?? '');
+                              if (age == null || age <= 0 || age > 99) return 'Idade inválida (máx 99)';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+
+                          const Text('Ano escolar', style: TextStyle(color: AppColors.explorer, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _anoCtrl,
+                            decoration: _fieldDecoration('Ex.: 5º ano, 7º ano...'),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o ano escolar' : null,
+                          ),
+                          const SizedBox(height: 20),
+
+                          Align(
+                            alignment: Alignment.center,
+                            child: SizedBox(
+                              width: 220,
+                              child: HomeActionButton(
+                                label: _saving ? 'CADASTRANDO...' : 'CADASTRAR',
+                                background: AppColors.explorer,
+                                textColor: Colors.black87,
+                                onPressed: () {
+                                  if (_saving) return;
+                                  _onCadastrar();
+                                },
+                                height: 52,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -6,7 +6,7 @@ class Usuario {
   final int? idade;
   final String? anoEscolar;
   final int numArvoresVisitadas;
-  final String? fotoMime; // [ALTERADO] Adicionado para saber se há foto
+  final String? fotoMime;
 
   Usuario({
     required this.nickname,
@@ -17,17 +17,15 @@ class Usuario {
     this.fotoMime, // [ALTERADO]
   });
 
-  // [CORRIGIDO] O factory agora ignora 'avatar_foto' e lê 'foto_mime'
   factory Usuario.fromJson(Map<String, dynamic> j) => Usuario(
         nickname: j['nickname'] as String,
         nome: j['nome'] as String? ?? '',
         idade: j['idade'] as int?,
         anoEscolar: j['ano_escolar'] as String?,
         numArvoresVisitadas: (j['num_arvores_visitadas'] as int?) ?? 0,
-        fotoMime: j['foto_mime'] as String?, // Adicionado para ler o mime type
+        fotoMime: j['foto_mime'] as String?,
       );
 
-  // [CORRIGIDO] toJson atualizado
   Map<String, dynamic> toJson() => {
         'nickname': nickname,
         'nome': nome,
@@ -37,7 +35,7 @@ class Usuario {
         if (fotoMime != null) 'foto_mime': fotoMime,
       };
 
-  // [CORRIGIDO] copyWith atualizado
+
   Usuario copyWith({
     String? nome,
     int? idade,
@@ -46,7 +44,7 @@ class Usuario {
     String? fotoMime,
   }) {
     return Usuario(
-      nickname: nickname, // nickname não deve ser alterado
+      nickname: nickname,
       nome: nome ?? this.nome,
       idade: idade ?? this.idade,
       anoEscolar: anoEscolar ?? this.anoEscolar,

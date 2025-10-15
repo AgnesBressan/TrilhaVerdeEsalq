@@ -25,6 +25,8 @@ class ApiClient {
     if (fromEnv.isNotEmpty) return fromEnv;
     if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:3001';
     return 'http://127.0.0.1:3001';
+    //const String ipReal = 'http://192.168.0.114:3001';
+    // return ipReal;  
   }
 
   Uri _u(String path, [Map<String, dynamic>? q]) =>
@@ -148,13 +150,13 @@ class ApiClient {
         'ano_escolar': u.anoEscolar,
         'num_arvores_visitadas': u.numArvoresVisitadas,
       }),
+    
     );
 
     if (r.statusCode == 409) throw ApiConflictError();
     if (r.statusCode != 200 && r.statusCode != 201) {
       throw Exception('HTTP ${r.statusCode}: ${r.body}');
     }
-
     final data = jsonDecode(r.body) as Map<String, dynamic>;
     return Usuario.fromJson(data);
   }
@@ -220,9 +222,6 @@ class ApiClient {
     return data['total'] as int;
   }
 
-  // [NOVO] Adicionado método para salvar o troféu
-  /// Salva um novo troféu para o usuário quando ele acerta um quiz.
-  /// Endpoint: POST /api/usuarios/{nickname}/trofeus
   Future<void> salvarTrofeu(String nickname, String trilhaNome, int arvoreCodigo) async {
     final t = await _getToken();
     final r = await _http.post(

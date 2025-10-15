@@ -33,7 +33,7 @@ class TrilhaVerdeApp extends StatelessWidget {
         fontFamily: 'Poppins',
         useMaterial3: false,
       ),
-      // escolha a rota inicial que você usa como “splash”/início
+
       initialRoute: '/',
       routes: {
         '/':            (context) => const TelaInicial(),

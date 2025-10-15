@@ -14,6 +14,18 @@ class TelaQuiz extends StatefulWidget {
 }
 
 class _TelaQuizState extends State<TelaQuiz> {
+  static const Map<String, Color> _opcaoColors = {
+    'A': Color(0xFF4F6F52), // Verde Escuro
+    'B': Color(0xFFA7C957), // Verde Claro
+    'C': Color(0xFFEBA937), // Laranja/Amarelo
+    'D': Color(0xFF8B5E3C), // Marrom Escuro
+    'E': Color(0xFFA35E2D), // Marrom Claro
+  };
+
+  Color _getColorForKey(String key) {
+    return _opcaoColors[key] ?? Colors.grey;
+  }
+
   final _api = ApiClient();
   bool _gotArgs = false;
 
@@ -33,7 +45,6 @@ class _TelaQuizState extends State<TelaQuiz> {
     });
   }
   
-  // [LÓGICA DE VITÓRIA ADICIONADA AQUI]
   Future<void> _onConfirmarResposta() async {
     if (_opcaoSelecionadaKey == null || _isSubmitting || _pergunta == null) return;
 
@@ -46,31 +57,25 @@ class _TelaQuizState extends State<TelaQuiz> {
         final prefs = await SharedPreferences.getInstance();
         final nickname = prefs.getString('ultimo_usuario');
         if (nickname != null) {
-          // 1. Salva o troféu da árvore atual
           await _api.salvarTrofeu(nickname, _pergunta!.trilhaNome, _pergunta!.arvoreCodigo);
           
-          // 2. Busca os dados atualizados para verificar se o jogo acabou
           final trofeus = await _api.listarTrofeus(nickname);
           final totalArvores = await _api.obterTotalArvores();
 
           if (!mounted) return;
 
-          // 3. Compara o número de troféus com o total de árvores
           if (trofeus.length >= totalArvores) {
-            // JOGO GANHO! Navega para a tela de vitória.
             Navigator.pushReplacementNamed(context, '/ganhou');
           } else {
-            // Ainda não acabou, navega para a tela de acerto normal.
             Navigator.pushReplacementNamed(context, '/acertou');
           }
         }
       } else {
         if (!mounted) return;
-        // Navega para a tela de erro, passando a URL da dica em áudio
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => TelaErrou(audioDicaUrl: _pergunta!.audioDicaUrl),
+            builder: (context) => TelaErrou(pergunta: _pergunta!),
           ),
         );
       }
@@ -83,7 +88,6 @@ class _TelaQuizState extends State<TelaQuiz> {
     }
   }
 
-  // A função _buildOptions e o resto da classe permanecem os mesmos
   List<Widget> _buildOptions(Pergunta p) {
     final options = <_OpcaoData>[];
     if (p.itemA != null && p.itemA!.isNotEmpty) options.add(_OpcaoData('A', p.itemA!));
@@ -93,6 +97,8 @@ class _TelaQuizState extends State<TelaQuiz> {
     if (p.itemE != null && p.itemE!.isNotEmpty) options.add(_OpcaoData('E', p.itemE!));
 
     return options.map((op) {
+      final color = _getColorForKey(op.key); 
+      
       return Padding(
         padding: const EdgeInsets.only(bottom: 14.0),
         child: _OpcaoTile(
@@ -103,6 +109,7 @@ class _TelaQuizState extends State<TelaQuiz> {
               _opcaoSelecionadaKey = op.key;
             });
           },
+          primaryColor: color, 
         ),
       );
     }).toList();
@@ -174,16 +181,18 @@ class _OpcaoTile extends StatelessWidget {
   final String titulo;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color primaryColor; 
   
   const _OpcaoTile({
     required this.titulo,
     required this.isSelected,
     required this.onTap,
+    required this.primaryColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.play : const Color(0xFF8B5E3C);
+    final color = primaryColor;
     
     return Material(
       color: Colors.transparent,
@@ -195,7 +204,7 @@ class _OpcaoTile extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.25),
+            color: color.withOpacity(0.37), 
             borderRadius: BorderRadius.circular(18),
             border: isSelected ? Border.all(color: color, width: 2.5) : null,
           ),
@@ -207,7 +216,7 @@ class _OpcaoTile extends StatelessWidget {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w800,
               fontSize: 16,
-              color: color,
+              color: color, 
             ),
           ),
         ),

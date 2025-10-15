@@ -1,4 +1,3 @@
-// lib/screens/tela_dicas.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -99,7 +98,6 @@ class _TelaDicasState extends State<TelaDicas> {
     }
   }
 
-  // A LÓGICA DE TOCAR/PAUSAR FOI CENTRALIZADA E CORRIGIDA AQUI
   Future<void> _toggleAudioPlayback() async {
     const baseUrl = 'http://localhost:3001'; // Para emulador Android, use 'http://10.0.2.2:3001'
 
@@ -115,11 +113,9 @@ class _TelaDicasState extends State<TelaDicas> {
       await _player.pause();
     } else {
       String finalUrl;
-      // VERIFICA SE O CAMINHO JÁ É UMA URL COMPLETA
       if (audioPath.startsWith('http')) {
         finalUrl = audioPath;
       } else {
-        // SE NÃO FOR, MONTA A URL COMPLETA COM O BASEURL
         finalUrl = baseUrl + audioPath;
       }
       await _player.play(UrlSource(finalUrl));
@@ -216,7 +212,6 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 50),
 
-              // Balão + mascote
               SizedBox(
                 height: 210,
                 width: double.infinity,
@@ -264,7 +259,6 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 14),
 
-              // Descrição vinda da pergunta
               Text(
                 _perguntaSelecionada?.texto ??
                     'Nenhuma descrição disponível para esta árvore.',
@@ -277,7 +271,6 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 30),
 
-              // Caixa de áudio funcional
               Center(
                 child: Container(
                   padding:
@@ -308,7 +301,6 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 24),
 
-              // Botão "RESPONDER A PERGUNTA"
               Center(
                 child: AppButton(
                   label: _perguntaSelecionada == null

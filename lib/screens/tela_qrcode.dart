@@ -17,21 +17,19 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
 
-  // [ALTERADO] Variáveis de estado para guardar os dados esperados
   String? _trilhaEsperada;
   int? _arvoreCodigoEsperado;
   String? _tituloArvore;
-  bool _handledScan = false; // Flag para evitar múltiplas detecções
+  bool _handledScan = false; 
 
-  // [ALTERADO] É melhor pegar os argumentos no didChangeDependencies
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?);
     if (args != null) {
-      _trilhaEsperada = args['trilha'];
-      _arvoreCodigoEsperado = args['arvoreCodigo'];
-      _tituloArvore = args['titulo'];
+      _trilhaEsperada = args['trilha'] as String?;
+      _arvoreCodigoEsperado = args['arvoreCodigo'] as int?; 
+      _tituloArvore = args['titulo'] as String?; 
     }
   }
 
@@ -41,7 +39,6 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     super.dispose();
   }
 
-  /// Função para o botão de debug, está perfeita.
   void _onDebugTap() {
     if (_trilhaEsperada != null && _arvoreCodigoEsperado != null) {
       Navigator.pushReplacementNamed(
@@ -55,26 +52,22 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     }
   }
 
-  /// [LÓGICA CORRIGIDA] Função chamada na leitura do QR Code
   void _onDetect(BarcodeCapture capture) {
-    if (_handledScan) return; // Se já lidamos com um scan, ignora os próximos
+    if (_handledScan) return;
 
     final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
     final qrCodeData = barcode?.rawValue ?? '';
     if (qrCodeData.isEmpty) return;
     
-    _handledScan = true; // Marca que já processamos um código
-    _controller.stop();  // Para a câmera
+    _handledScan = true;
+    _controller.stop();
 
     try {
-      // 1. Extrai os dados do QR Code (formato: "nome_da_trilha;codigo")
       final parts = qrCodeData.split(';');
       final trilhaLida = parts[0];
       final codigoLido = int.parse(parts[1]);
 
-      // 2. Compara os dados lidos com os dados esperados (vindos do mapa)
       if (trilhaLida == _trilhaEsperada && codigoLido == _arvoreCodigoEsperado) {
-        // SUCESSO! Os dados batem. Navega para a tela de dicas.
         Navigator.pushReplacementNamed(
           context,
           '/dicas',
@@ -84,22 +77,18 @@ class _TelaQRCodeState extends State<TelaQRCode> {
           },
         );
       } else {
-        // ERRO: O usuário escaneou o QR Code da árvore errada.
         _mostrarErroEVoltar('Você escaneou o QR Code da árvore errada!');
       }
     } catch (e) {
-      // ERRO: O formato do QR Code é inválido.
       _mostrarErroEVoltar('Este QR Code não parece ser válido.');
     }
   }
 
-  // Função auxiliar para mostrar um erro e voltar ao mapa
   void _mostrarErroEVoltar(String mensagem) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensagem, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent),
     );
-    // Volta para o mapa após um curto período
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
@@ -114,7 +103,6 @@ class _TelaQRCodeState extends State<TelaQRCode> {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER - está ótimo
             Container(
               width: double.infinity,
               color: AppColors.panelBg,
@@ -168,7 +156,6 @@ class _TelaQRCodeState extends State<TelaQRCode> {
               ),
             ),
 
-            // SCANNER - está ótimo
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
