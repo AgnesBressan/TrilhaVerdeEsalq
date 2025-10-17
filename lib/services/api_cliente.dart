@@ -20,13 +20,9 @@ class ApiClient {
   final http.Client _http;
   ApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
+  // [VERSÃO FINAL] Esta função agora aponta para o seu backend na nuvem.
   String get _base {
-    final fromEnv = const String.fromEnvironment('API_BASE');
-    if (fromEnv.isNotEmpty) return fromEnv;
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:3001';
-    return 'http://127.0.0.1:3001';
-    //const String ipReal = 'http://192.168.0.114:3001';
-    // return ipReal;  
+    return 'https://webtrilhaverde.onrender.com';
   }
 
   Uri _u(String path, [Map<String, dynamic>? q]) =>
