@@ -20,9 +20,8 @@ class ApiClient {
   final http.Client _http;
   ApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
-  // [VERSÃO FINAL] Esta função agora aponta para o seu backend na nuvem.
   String get _base {
-    return 'https://webtrilhaverde.onrender.com';
+    return 'http://200.144.255.186:3001';
   }
 
   Uri _u(String path, [Map<String, dynamic>? q]) =>
