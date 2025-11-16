@@ -33,9 +33,15 @@ class _TelaErrouState extends State<TelaErrou> {
 
   @override
   void dispose() {
-    player.stop(); 
+    _stopAudio();
     player.dispose();
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    _stopAudio();
+    super.deactivate();
   }
 
   Future<void> _toggleAudioPlayback() async {
@@ -53,6 +59,10 @@ class _TelaErrouState extends State<TelaErrou> {
     } else {
       await player.play(UrlSource(audioDicaUrl));
     }
+  }
+
+  void _stopAudio() {
+    player.stop();
   }
 
   @override
@@ -164,9 +174,14 @@ class _TelaErrouState extends State<TelaErrou> {
                     AppButton(
                       label: 'TENTAR NOVAMENTE',
                       onPressed: () {
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context);
-                        }
+                        _stopAudio();
+                        Navigator.pushReplacementNamed(
+                          context,
+                          '/quiz',
+                          arguments: {
+                            'pergunta': widget.pergunta,
+                          },
+                        );
                       },
                     ),
                   ],

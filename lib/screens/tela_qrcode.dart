@@ -16,6 +16,52 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     torchEnabled: false,
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
+  static const List<String> _codigoKeys = [
+    'codigo',
+    'cod',
+    'arvore',
+    'arvorecodigo',
+    'narvore',
+    'id',
+    'tree',
+    'numero',
+    'num',
+    'numeroarvore',
+  ];
+  static const List<String> _trilhaKeys = [
+    'trilha',
+    'trail',
+    'rota',
+    'route',
+    'trilha_nome',
+    'trilhanome',
+  ];
+  static const Map<String, String> _accentMap = {
+    'á': 'a',
+    'à': 'a',
+    'â': 'a',
+    'ã': 'a',
+    'ä': 'a',
+    'å': 'a',
+    'é': 'e',
+    'è': 'e',
+    'ê': 'e',
+    'ë': 'e',
+    'í': 'i',
+    'ì': 'i',
+    'î': 'i',
+    'ï': 'i',
+    'ó': 'o',
+    'ò': 'o',
+    'ô': 'o',
+    'õ': 'o',
+    'ö': 'o',
+    'ú': 'u',
+    'ù': 'u',
+    'û': 'u',
+    'ü': 'u',
+    'ç': 'c',
+  };
 
   String? _trilhaEsperada;
   int? _arvoreCodigoEsperado;
@@ -63,11 +109,16 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     _controller.stop();
 
     try {
-      final parts = qrCodeData.split(';');
-      final trilhaLida = parts[0];
-      final codigoLido = int.parse(parts[1]);
+      final payload = _parseQrPayload(qrCodeData);
+      if (payload == null) {
+        _mostrarErroEVoltar('Este QR Code não parece ser válido.');
+        return;
+      }
 
-      if (trilhaLida == _trilhaEsperada && codigoLido == _arvoreCodigoEsperado) {
+      final codigoOk = _arvoreCodigoEsperado == null || payload.codigo == _arvoreCodigoEsperado;
+      final trilhaOk = _matchesTrilha(payload.trilha);
+
+      if (codigoOk && trilhaOk) {
         Navigator.pushReplacementNamed(
           context,
           '/dicas',
@@ -77,7 +128,8 @@ class _TelaQRCodeState extends State<TelaQRCode> {
           },
         );
       } else {
-        _mostrarErroEVoltar('Você escaneou o QR Code da árvore errada!');
+        final codigoMsg = payload.codigo.toString();
+        _mostrarErroEVoltar('Você escaneou o QR Code da árvore errada! (lido $codigoMsg)');
       }
     } catch (e) {
       _mostrarErroEVoltar('Este QR Code não parece ser válido.');
@@ -96,8 +148,145 @@ class _TelaQRCodeState extends State<TelaQRCode> {
     });
   }
 
+  _QrPayload? _parseQrPayload(String raw) {
+    final cleaned = raw.trim();
+    if (cleaned.isEmpty) return null;
+
+    int? codigo;
+    String? trilha;
+
+    int? tryParseInt(String? value) {
+      if (value == null) return null;
+      final parsed = int.tryParse(value.trim());
+      return parsed;
+    }
+
+    void tryFromTokens(Iterable<String> tokens) {
+      for (final token in tokens) {
+        final current = token.trim();
+        if (current.isEmpty) continue;
+
+        final eqIndex = current.indexOf('=');
+        final colonIndex = current.indexOf(':');
+        String? key;
+        String? value;
+
+        if (eqIndex > 0) {
+          key = current.substring(0, eqIndex).trim().toLowerCase();
+          value = current.substring(eqIndex + 1).trim();
+        } else if (colonIndex > 0) {
+          key = current.substring(0, colonIndex).trim().toLowerCase();
+          value = current.substring(colonIndex + 1).trim();
+        }
+
+        if (key != null && value != null) {
+          if (_codigoKeys.contains(key) && codigo == null) {
+            codigo = tryParseInt(value);
+          }
+          if (_trilhaKeys.contains(key) && (trilha == null || trilha!.isEmpty)) {
+            trilha = value;
+          }
+        }
+      }
+    }
+
+    codigo = tryParseInt(cleaned);
+    if (codigo != null) {
+      return _QrPayload(codigo: codigo!, trilha: trilha);
+    }
+
+    final uri = Uri.tryParse(cleaned);
+    if (uri != null && (uri.hasScheme || cleaned.startsWith('http') || cleaned.startsWith('www.'))) {
+      for (final key in _codigoKeys) {
+        if (codigo != null) break;
+        codigo = tryParseInt(uri.queryParameters[key]);
+      }
+      for (final key in _trilhaKeys) {
+        if (trilha != null && trilha!.isNotEmpty) break;
+        final value = uri.queryParameters[key];
+        if (value != null && value.trim().isNotEmpty) {
+          trilha = value;
+        }
+      }
+      if (codigo == null) {
+        for (final segment in uri.pathSegments.reversed) {
+          final parsed = tryParseInt(segment);
+          if (parsed != null) {
+            codigo = parsed;
+            break;
+          }
+        }
+      }
+
+      if (codigo != null) {
+        trilha = trilha?.replaceAll('+', ' ').trim();
+        return _QrPayload(codigo: codigo!, trilha: trilha);
+      }
+    }
+
+    final normalizedTokens = cleaned
+        .replaceAll(RegExp(r'[\r\n]+'), ';')
+        .split(RegExp(r'[;,|]'))
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    if (normalizedTokens.isNotEmpty) {
+      tryFromTokens(normalizedTokens);
+
+      if (codigo == null) {
+        final possibleCode = tryParseInt(normalizedTokens.last);
+        if (possibleCode != null) {
+          codigo = possibleCode;
+          if (normalizedTokens.length > 1) {
+            trilha ??= normalizedTokens.sublist(0, normalizedTokens.length - 1).join(' ');
+          }
+        }
+      }
+    }
+
+    if (codigo == null) {
+      final matches = RegExp(r'(\d{2,})').allMatches(cleaned).toList();
+      if (matches.isNotEmpty) {
+        matches.sort((a, b) => a.group(0)!.length.compareTo(b.group(0)!.length));
+        final candidate = matches.last.group(0);
+        codigo = tryParseInt(candidate);
+      }
+    }
+
+    if (codigo == null) return null;
+    return _QrPayload(codigo: codigo!, trilha: trilha);
+  }
+
+  bool _matchesTrilha(String? trilhaLida) {
+    if (_trilhaEsperada == null || _trilhaEsperada!.trim().isEmpty) return true;
+    if (trilhaLida == null || trilhaLida.trim().isEmpty) return true;
+
+    final esperado = _normalizeText(_trilhaEsperada!);
+    final lido = _normalizeText(trilhaLida);
+
+    return esperado == lido || esperado.contains(lido) || lido.contains(esperado);
+  }
+
+  String _normalizeText(String value) {
+    final lower = value.toLowerCase();
+    final buffer = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      buffer.write(_accentMap[char] ?? char);
+    }
+    return buffer
+        .toString()
+        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+        .replaceAll(RegExp(r'\\s+'), ' ')
+        .trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Constrói a string do código da árvore (ex: "(123)" ou "")
+    final codigoStr = _arvoreCodigoEsperado != null ? ' ($_arvoreCodigoEsperado)' : '';
+    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -120,7 +309,8 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lendo QR de ${_tituloArvore ?? "..."}',
+                          // ALTERAÇÃO AQUI: Adiciona o código da árvore
+                          'Lendo QR de ${_tituloArvore ?? "..."}$codigoStr', 
                           style: const TextStyle(
                             color: AppColors.principal_title,
                             fontWeight: FontWeight.w700,
@@ -208,6 +398,13 @@ class _TelaQRCodeState extends State<TelaQRCode> {
       ),
     );
   }
+}
+
+class _QrPayload {
+  final int codigo;
+  final String? trilha;
+
+  const _QrPayload({required this.codigo, this.trilha});
 }
 
 class _RoundIcon extends StatelessWidget {

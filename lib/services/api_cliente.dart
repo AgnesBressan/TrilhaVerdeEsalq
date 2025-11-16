@@ -205,16 +205,23 @@ class ApiClient {
     return data.map((e) => Trofeu.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<int> obterTotalArvores() async {
+  Future<int> obterTotalArvores({String? trilha}) async {
     final t = await _getToken();
-    final r = await _http.get(_u('/api/arvores/total', {'ativas': 'true'}), headers: _headers(token: t)); 
+    final query = <String, String>{
+      'ativas': 'true',
+      if (trilha != null && trilha.isNotEmpty) 'trilha': trilha,
+    };
+    final r = await _http.get(
+      _u('/api/arvores/total', query),
+      headers: _headers(token: t),
+    ); 
     
     if (r.statusCode != 200) {
       throw Exception('Falha ao buscar total de árvores');
     }
     
     final data = jsonDecode(r.body) as Map<String, dynamic>;
-    return data['total'] as int;
+    return (data['total'] as num).toInt();
   }
 
   Future<void> salvarTrofeu(String nickname, String trilhaNome, int arvoreCodigo) async {

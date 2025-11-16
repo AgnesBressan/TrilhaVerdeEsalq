@@ -104,7 +104,11 @@ class _TelaCadastroState extends State<TelaCadastro> {
               left: 10,
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: AppColors.explorer, size: 30),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/home',
+                  (route) => false,
+                ),
               ),
             ),
             

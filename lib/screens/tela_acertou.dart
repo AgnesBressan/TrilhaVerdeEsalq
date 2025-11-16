@@ -1,10 +1,32 @@
-//verificada
+// lib/telas/tela_acertou.dart
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 
-class TelaAcertou extends StatelessWidget {
+class TelaAcertou extends StatefulWidget {
   const TelaAcertou({super.key});
+
+  @override
+  State<TelaAcertou> createState() => _TelaAcertouState();
+}
+
+class _TelaAcertouState extends State<TelaAcertou> {
+  bool _finalizouTrilha = false;
+  bool _handledArgs = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_handledArgs) return;
+    _handledArgs = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    // O argumento 'finalizou' é apenas informativo agora. A navegação para /ganhou
+    // é feita diretamente pela TelaQuiz.
+    if (args is Map && args['finalizou'] == true) {
+      _finalizouTrilha = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +99,7 @@ class TelaAcertou extends StatelessWidget {
                     ),
                     const SizedBox(height: 26),
 
-                    // botões
+                    // botões (sem _finalizouTrilha, pois a navegação já ocorreu)
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 16,

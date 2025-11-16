@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="trilha_verde_esalq"
+        android:label="Trilha Verde"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/icon_app">
         <activity
             android:name=".MainActivity"
             android:exported="true"

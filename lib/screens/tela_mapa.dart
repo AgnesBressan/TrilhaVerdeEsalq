@@ -1,4 +1,3 @@
-// lib/telas/tela_mapa.dart
 import 'package:flutter/material.dart';
 import '../models/map_spot.dart';
 import '../widgets/overlayed_map.dart';
@@ -6,7 +5,9 @@ import '../widgets/bottom_nav.dart';
 import '../services/api_cliente.dart'; 
 import '../models/arvore.dart'; 
 import '../models/usuario.dart';
+import '../models/trofeu.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer'; // Importante para usar log()
 
 
 class TelaMapa extends StatefulWidget {
@@ -18,13 +19,13 @@ class TelaMapa extends StatefulWidget {
 class _TelaMapaState extends State<TelaMapa> {
   final _api = ApiClient();
   static const String _trilhaAtiva = 'Árvores Úteis';
-  static const Size _mapSize = Size(650, 923);
+  static const Size _mapSize = Size(395, 562); 
 
   bool _isLoading = true;
   List<MapSpot> _allSpots = [];
   int? _activeId;
   
-  int _arvoresVisitadas = 0; 
+  Set<int> _arvoresVisitadasCodigos = <int>{}; 
   String? _nickname;
 
   @override
@@ -41,42 +42,42 @@ class _TelaMapaState extends State<TelaMapa> {
       final prefs = await SharedPreferences.getInstance();
       _nickname = prefs.getString('ultimo_usuario');
 
-      final List<Arvore> arvoreList = await _api.listarArvores(
-        trilha: _trilhaAtiva,
-        ativas: true,
-      );
-      
-      Usuario? usuario = _nickname != null ? await _api.obterUsuario(_nickname!) : null;
+      final resultados = await Future.wait([
+        _api.listarArvores(trilha: _trilhaAtiva, ativas: true),
+        _nickname != null ? _api.listarTrofeus(_nickname!) : Future.value(<Trofeu>[]),
+        _nickname != null ? _api.obterUsuario(_nickname!) : Future.value(null),
+      ]);
+
+      final List<Arvore> arvoreList = resultados[0] as List<Arvore>;
+      final List<Trofeu> trofeus = resultados[1] as List<Trofeu>;
 
       final spots = arvoreList.map((arvore) => MapSpot.fromArvore(arvore)).toList();
 
       spots.sort((a, b) {
-        final ordemA = a.ordem;
-        final ordemB = b.ordem;
-        if (ordemA == ordemB) {
-            return a.codigo.compareTo(b.codigo); 
-        }
-        return ordemA.compareTo(ordemB); 
+        return a.ordem.compareTo(b.ordem) != 0 
+               ? a.ordem.compareTo(b.ordem)
+               : a.codigo.compareTo(b.codigo);
       });
 
       if (!mounted) return;
       setState(() {
-        _allSpots = spots;
-        _arvoresVisitadas = usuario?.numArvoresVisitadas ?? 0;
+        _allSpots = spots; 
         
-        
-        final proximaArvore = spots.firstWhereOrNull((spot) => spot.ordem > _arvoresVisitadas); 
+        final trofeusDaTrilha = trofeus.where((t) => t.trilhaNome == _trilhaAtiva).toList();
+        final visitadasSet = trofeusDaTrilha.map((t) => t.arvoreCodigo).toSet();
+        _arvoresVisitadasCodigos = visitadasSet;
 
-        if (proximaArvore != null) {
-            _activeId = proximaArvore.codigo;
-        } else {
-            // Se trilha completa ou falha na ordem, foca na última visitada (para visualização)
-            final ultimaVisitada = spots.firstWhereOrNull((s) => s.ordem == _arvoresVisitadas);
-            _activeId = ultimaVisitada?.codigo;
-        }
+        final proximaArvore = spots.firstWhereOrNull(
+          (spot) => !visitadasSet.contains(spot.codigo),
+        );
+
+        _activeId = proximaArvore?.codigo;
+        
+        log('Mapa carregado. Total Ativas: ${spots.length}. Visitadas: ${visitadasSet.length}. Próximo Foco: ${proximaArvore?.titulo ?? "Nenhuma"}');
       });
       
     } catch (e) {
+      log('ERRO no carregamento do mapa: $e');
       if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Erro ao carregar mapa: $e')),
@@ -89,59 +90,81 @@ class _TelaMapaState extends State<TelaMapa> {
   }
 
   void _onSpotTap(MapSpot s) {
-    setState(() => _activeId = s.codigo);
+    // 🔍 LOG 1: Confirma se a função foi chamada
+    log('CLIQUE NO MAPA detectado. Árvore clicada: ${s.titulo} (${s.codigo}). Árvore esperada: ${_activeId}');
 
-    final proximaArvore = _allSpots.firstWhereOrNull((spot) => spot.ordem > _arvoresVisitadas); 
+    // 1. Encontra a próxima árvore (foco) para dar a mensagem correta
+    final proximaArvoreSpot = _allSpots.firstWhereOrNull(
+      (spot) => spot.codigo == _activeId,
+    );
     
-    final proximaOrdemEsperada = proximaArvore?.ordem;
-    final isNext = s.ordem == proximaOrdemEsperada;
-    
-    final proximaArvoreTitulo = proximaArvore?.titulo ?? 'Trilha completa.'; 
+    // 2. Lógica para Árvore ERRADA (não é a _activeId)
+    if (s.codigo != _activeId) {
+      // 🔍 LOG 2: Entrou na lógica de erro (árvore errada)
+      log('FLUXO: Árvore ${s.codigo} é a errada. Exibindo SnackBar.');
 
-    final isTrilhaRealmenteCompleta = proximaArvore == null; 
+      final arvoreNome = s.titulo;
+      final arvoreCodigo = s.codigo;
+      
+      String mensagem;
+      if (proximaArvoreSpot != null) {
+        // Encontrou a próxima árvore para guiar o usuário
+        final proximaNome = proximaArvoreSpot.titulo;
+        final proximaCodigo = proximaArvoreSpot.codigo;
+        mensagem = 'Você clicou na $arvoreNome ($arvoreCodigo). A próxima árvore a ser visitada é a $proximaNome ($proximaCodigo). Siga a ordem da trilha!';
+      } else {
+        // Todas as árvores foram lidas
+        mensagem = 'Você clicou na $arvoreNome ($arvoreCodigo). Parabéns, você já visitou todas as árvores ativas da trilha!';
+      }
 
-    if (isNext) {
-        Navigator.pushNamed(
-            context, 
-            '/qrcode', 
-            arguments: {
-                'trilha': _trilhaAtiva,      
-                'arvoreCodigo': s.codigo,    
-                'titulo': s.titulo,          
-            }
-        ).then((_) => _carregarDados());
-            
-    } else if (isTrilhaRealmenteCompleta) {
-        final msg = 'Parabéns, você completou a trilha! Você clicou em ${s.titulo} novamente.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-    } else if (s.ordem <= _arvoresVisitadas) {
-        final msg = 'Você já visitou a ${s.titulo}. Sua próxima parada é a ${proximaArvoreTitulo}.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-    } else {
-        final msg = 'Você clicou em ${s.titulo}. Sua próxima parada é a ${proximaArvoreTitulo}.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      if (mounted) {
+        // Exibe o SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              mensagem, 
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      return; 
     }
+
+    // 3. Lógica para Árvore CORRETA (é a _activeId)
+    // 🔍 LOG 3: Entrou na lógica de sucesso (navegação)
+    log('FLUXO: Árvore ${s.codigo} é a correta. Navegando para /qrcode.');
+    
+    Navigator.pushNamed(
+      context,
+      '/qrcode',
+      arguments: {
+        'trilha': _trilhaAtiva,
+        'arvoreCodigo': s.codigo,
+        'titulo': s.titulo,
+      },
+    ).then((_) => _carregarDados()); 
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeSpots = _allSpots.where((s) => s.enabled).toList();
+    final activeSpots = _allSpots; 
 
     return Scaffold(
       backgroundColor: const Color(0xFF8BD600),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Center(
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: OverlayedMap(
                     baseSize: _mapSize,
-                    spots: activeSpots,
+                    spots: activeSpots, 
                     activeId: _activeId,
                     onSpotTap: _onSpotTap,
-                    arvoresVisitadas: _arvoresVisitadas, 
+                    visitedCodigos: _arvoresVisitadasCodigos, 
                   ),
                 ),
               ),
@@ -150,6 +173,7 @@ class _TelaMapaState extends State<TelaMapa> {
     );
   }
 }
+
 extension IterableExtension<T> on Iterable<T> {
   T? firstWhereOrNull(bool Function(T element) test) {
     for (var element in this) {

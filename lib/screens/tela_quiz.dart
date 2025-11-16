@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pergunta.dart';
 import '../services/api_cliente.dart';
-import 'tela_errou.dart'; 
+import 'tela_errou.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 
@@ -57,21 +57,46 @@ class _TelaQuizState extends State<TelaQuiz> {
         final prefs = await SharedPreferences.getInstance();
         final nickname = prefs.getString('ultimo_usuario');
         if (nickname != null) {
+          // 1. Salva o troféu
           await _api.salvarTrofeu(nickname, _pergunta!.trilhaNome, _pergunta!.arvoreCodigo);
           
+          // 2. Conta os troféus já coletados (para a trilha atual)
           final trofeus = await _api.listarTrofeus(nickname);
-          final totalArvores = await _api.obterTotalArvores();
+          final trofeusDaTrilha = trofeus
+              .where((t) => t.trilhaNome == _pergunta!.trilhaNome)
+              .map((t) => t.arvoreCodigo)
+              .toSet();
+          final trofeusColetados = trofeusDaTrilha.length;
+          
+          // 3. OBTÉM O TOTAL DE ÁRVORES ATIVAS (CORREÇÃO CRUCIAL)
+          // Busca APENAS as árvores ATIVAS na trilha para o cálculo do total.
+          final todasArvoresAtivas = await _api.listarArvores(
+            trilha: _pergunta!.trilhaNome, 
+            ativas: true,
+          );
+          final totalArvoresAtivas = todasArvoresAtivas.length;
 
           if (!mounted) return;
 
-          if (trofeus.length >= totalArvores) {
-            Navigator.pushReplacementNamed(context, '/ganhou');
-          } else {
-            Navigator.pushReplacementNamed(context, '/acertou');
-          }
+          // 4. VERIFICA FINALIZAÇÃO: Compara os coletados com o total de ativas
+          final finalizouTrilha =
+              totalArvoresAtivas > 0 && trofeusColetados >= totalArvoresAtivas;
+
+          // 5. NAVEGAÇÃO CONDICIONAL
+          final targetRoute = finalizouTrilha ? '/ganhou' : '/acertou';
+          
+          Navigator.pushReplacementNamed(
+            context,
+            targetRoute, 
+            // Argumentos para /ganhou ou /acertou
+            arguments: finalizouTrilha 
+                      ? {'autoReset': true} 
+                      : {'finalizou': false},
+          );
         }
       } else {
         if (!mounted) return;
+        setState(() => _isSubmitting = false);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

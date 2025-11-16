@@ -6,9 +6,9 @@ class OverlayedMap extends StatelessWidget {
   final Size baseSize; 
   final List<MapSpot> spots;
   final void Function(MapSpot)? onSpotTap;
-  final int arvoresVisitadas;
+  final Set<int> visitedCodigos;
   
-  static const String baseAsset = 'lib/assets/img/mapa_cru.jpg';
+  static const String baseAsset = 'lib/assets/img/mapa_cru.png';
 
   const OverlayedMap({
     super.key,
@@ -16,7 +16,7 @@ class OverlayedMap extends StatelessWidget {
     required this.spots,
     this.activeId,
     this.onSpotTap,
-    required this.arvoresVisitadas,
+    required this.visitedCodigos,
   });
 
   @override
@@ -26,50 +26,60 @@ class OverlayedMap extends StatelessWidget {
       final aspect = baseSize.width / baseSize.height;
       final h = w / aspect;
 
-      return SizedBox(
-        width: w,
-        height: h,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // fundo (mapa)
-            Positioned.fill(
-              child: Image.asset(baseAsset, fit: BoxFit.cover),
-            ),
+      return InteractiveViewer(
+        panEnabled: true,
+        boundaryMargin: const EdgeInsets.all(80),
+        minScale: 1,
+        maxScale: 3.5,
+        child: SizedBox(
+          width: w,
+          height: h,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // fundo (mapa)
+              Positioned.fill(
+                child: Image.asset(baseAsset, fit: BoxFit.cover),
+              ),
 
-            ...spots.map((s) {
-              final px = s.pos.dx * w;
-              final py = s.pos.dy * h;
-              const icon = 28.0;
+              ...spots.map((s) {
+                final px = s.pos.dx * w;
+                final py = s.pos.dy * h;
+                const icon = 28.0;
+                final bool isActive = activeId != null && s.codigo == activeId;
 
-              return Positioned(
-                left: px - icon / 2,
-                top: py - icon / 2,
-                child: GestureDetector(
-                  onTap: () => onSpotTap?.call(s),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (s.codigo == activeId) 
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              width: 2.5,
-                              color: Colors.brown,
+                return Positioned(
+                  left: px - icon / 2,
+                  top: py - icon / 2,
+                  child: GestureDetector(
+                    onTap: () => onSpotTap?.call(s),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (isActive) 
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                width: 2.5,
+                                color: Colors.brown,
+                              ),
                             ),
                           ),
+                        Image.asset(
+                          _treeIconFor(s),
+                          width: icon,
+                          height: icon,
                         ),
-                      Image.asset(_treeIconFor(s),
-                          width: icon, height: icon),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
-          ],
+                );
+              }),
+            ],
+          ),
         ),
       );
     });
@@ -77,19 +87,15 @@ class OverlayedMap extends StatelessWidget {
 
 
   String _treeIconFor(MapSpot s) {
-      final proximaOrdem = arvoresVisitadas + 1;
-      
-      final isVisited = s.ordem <= arvoresVisitadas; 
-      
-      final isNextFocus = s.ordem == proximaOrdem;         
-      
       final variant = s.variant % 3 + 1;
       const baseDir = 'lib/assets/img';
+      final visited = visitedCodigos.contains(s.codigo);
+      final isActive = activeId != null && s.codigo == activeId;
 
-      if (isVisited || isNextFocus) {
-        return '$baseDir/arvore_${variant}.png'; 
-      } 
-      
-      return '$baseDir/arvore_${variant}_cinza.png'; 
+      if (visited || isActive) {
+        return '$baseDir/arvore_${variant}.png';
+      }
+
+      return '$baseDir/arvore_${variant}_cinza.png';
   }
 }

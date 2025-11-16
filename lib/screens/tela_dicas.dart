@@ -43,8 +43,15 @@ class _TelaDicasState extends State<TelaDicas> {
 
   @override
   void dispose() {
+    _stopAudio();
     _player.dispose();
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    _stopAudio();
+    super.deactivate();
   }
 
   @override
@@ -120,6 +127,10 @@ class _TelaDicasState extends State<TelaDicas> {
       }
       await _player.play(UrlSource(finalUrl));
     }
+  }
+
+  void _stopAudio() {
+    _player.stop();
   }
 
   @override
@@ -308,13 +319,18 @@ class _TelaDicasState extends State<TelaDicas> {
                       : 'RESPONDER A PERGUNTA',
                   onPressed: _perguntaSelecionada == null
                       ? null
-                      : () => Navigator.pushNamed(
+                      : () {
+                          // 🚀 CHAVE: Parar o áudio antes de navegar
+                          _stopAudio(); 
+
+                          Navigator.pushNamed(
                             context,
                             '/quiz',
                             arguments: {
                               'pergunta': _perguntaSelecionada!,
                             },
-                          ),
+                          );
+                        },
                 ),
               ),
             ],
