@@ -1,16 +1,17 @@
 // lib/models/arvore.dart
-
 class Arvore {
   final String trilhaNome;
   final int codigo;
   final String nome;
   final int ordem;
-  final String? especie; // String? é mais seguro que String
+  final String? especie;
   final bool ativa;
   final double? posX;
   final double? posY;
-  final String? fotoUrl; // Adicionado campo que faltava
-  final int quantidadePerguntas; // Adicionado campo que faltava
+  final String? fotoUrl;
+  final int quantidadePerguntas;
+  final double? latitude;   // ← NOVO
+  final double? longitude;  // ← NOVO
 
   Arvore({
     required this.trilhaNome,
@@ -23,6 +24,8 @@ class Arvore {
     this.posY,
     this.fotoUrl,
     this.quantidadePerguntas = 0,
+    this.latitude,   // ← NOVO
+    this.longitude,  // ← NOVO
   });
 
   static double? _parseDouble(dynamic value) {
@@ -33,7 +36,6 @@ class Arvore {
     return null;
   }
 
-  // [CORRIGIDO] Agora o fromJson usa a função _parseDouble para evitar o erro.
   factory Arvore.fromJson(Map<String, dynamic> j) {
     return Arvore(
       trilhaNome: j['trilha_nome'],
@@ -46,6 +48,8 @@ class Arvore {
       posY: _parseDouble(j['pos_y']),
       fotoUrl: j['foto_url'],
       quantidadePerguntas: (j['quantidade_perguntas'] as num?)?.toInt() ?? 0,
+      latitude: _parseDouble(j['latitude']),   // ← NOVO
+      longitude: _parseDouble(j['longitude']), // ← NOVO
     );
   }
 }

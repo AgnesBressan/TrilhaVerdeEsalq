@@ -21,6 +21,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   percent_indicator: ^4.2.2
   audioplayers: ^6.0.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  flutter_map_marker_popup: ^5.0.0  # opcional, para popup ao clicar
+  cached_network_image: ^3.3.1
 
 dev_dependencies:
   flutter_test:

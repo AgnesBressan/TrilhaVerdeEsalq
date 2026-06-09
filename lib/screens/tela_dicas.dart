@@ -106,7 +106,7 @@ class _TelaDicasState extends State<TelaDicas> {
   }
 
   Future<void> _toggleAudioPlayback() async {
-    const baseUrl = 'http://localhost:3001'; // Para emulador Android, use 'http://10.0.2.2:3001'
+    const baseUrl = 'http://10.0.2.2:3001';
 
     final audioPath = _perguntaSelecionada?.audioUrl;
     if (audioPath == null || audioPath.isEmpty) {
@@ -131,6 +131,26 @@ class _TelaDicasState extends State<TelaDicas> {
 
   void _stopAudio() {
     _player.stop();
+  }
+
+  void _abrirGaleria() {
+    final foto = _arvore?.fotoUrl;
+
+    if (foto == null || foto.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhuma foto disponível para esta árvore.')),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/galeria_arvore',
+      arguments: {
+        'foto': foto,
+        'nomeArvore': _arvore?.nome ?? 'Árvore',
+      },
+    );
   }
 
   @override
@@ -171,7 +191,6 @@ class _TelaDicasState extends State<TelaDicas> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título
               RichText(
                 text: const TextSpan(
                   children: [
@@ -198,7 +217,6 @@ class _TelaDicasState extends State<TelaDicas> {
               ),
               const SizedBox(height: 20),
 
-              // Nome da árvore
               Text(
                 nomeArvore,
                 style: const TextStyle(
@@ -224,7 +242,7 @@ class _TelaDicasState extends State<TelaDicas> {
               const SizedBox(height: 50),
 
               SizedBox(
-                height: 210,
+                height: 230,
                 width: double.infinity,
                 child: Stack(
                   children: [
@@ -233,8 +251,7 @@ class _TelaDicasState extends State<TelaDicas> {
                       right: 3,
                       child: Container(
                         constraints: BoxConstraints(maxWidth: w * 0.70),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         decoration: const BoxDecoration(
                           color: AppColors.speechBg32,
                           borderRadius: BorderRadius.only(
@@ -245,13 +262,43 @@ class _TelaDicasState extends State<TelaDicas> {
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: const Text(
-                          'Vamos conhecer um pouco\nmais sobre a árvore?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.loginBg,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Vamos conhecer um pouco\nmais sobre a árvore?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.loginBg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: 150,
+                              child: ElevatedButton(
+                                onPressed: _abrirGaleria,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFA7C957),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Galeria',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    color: AppColors.buttonText,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -303,8 +350,11 @@ class _TelaDicasState extends State<TelaDicas> {
                           color: AppColors.play,
                         ),
                       ),
-                      Image.asset('lib/assets/img/sound.png',
-                          height: 30, fit: BoxFit.contain),
+                      Image.asset(
+                        'lib/assets/img/sound.png',
+                        height: 30,
+                        fit: BoxFit.contain,
+                      ),
                     ],
                   ),
                 ),
@@ -320,8 +370,7 @@ class _TelaDicasState extends State<TelaDicas> {
                   onPressed: _perguntaSelecionada == null
                       ? null
                       : () {
-                          // 🚀 CHAVE: Parar o áudio antes de navegar
-                          _stopAudio(); 
+                          _stopAudio();
 
                           Navigator.pushNamed(
                             context,

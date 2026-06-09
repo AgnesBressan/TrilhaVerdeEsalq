@@ -8,6 +8,7 @@ import '../services/api_cliente.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/bottom_nav.dart';
+import '../models/trilha.dart';  // Importando o modelo de Trilha
 
 class TelaPrincipal extends StatefulWidget {
   const TelaPrincipal({super.key});
@@ -23,17 +24,26 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   Uint8List? _avatarBytes;    
   bool _loading = true;
 
+  // Para armazenar as trilhas disponíveis
+  List<Trilha> _trilhas = [];
+  String? _trilhaSelecionada;
+
   @override
   void initState() {
     super.initState();
     _carregarDados();
+    _carregarTrilhas();
+    _carregarTrilhaSelecionada();  // Carregar trilha selecionada ao iniciar
   }
 
+  // Carregar dados do usuário
   Future<void> _carregarDados() async {
     setState(() => _loading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      
+      prefs.setString('trilha_selecionada', _trilhaSelecionada!);
 
       final me = await _api.fetchMe();       
       final avatar = await _api.fetchAvatar(); 
@@ -55,7 +65,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                 : 'Usuário';
       }
 
-    
     } catch (e) {
       final prefs = await SharedPreferences.getInstance();
       final ultimo = prefs.getString('ultimo_usuario');
@@ -70,6 +79,26 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // Carregar as trilhas disponíveis no banco
+  Future<void> _carregarTrilhas() async {
+    try {
+      final trilhas = await _api.listarTrilhas(); // Supondo que o método para listar trilhas exista
+      setState(() {
+        _trilhas = trilhas;
+      });
+    } catch (e) {
+      print("Erro ao carregar as trilhas: $e");
+    }
+  }
+
+  // Carregar a trilha selecionada de SharedPreferences
+  Future<void> _carregarTrilhaSelecionada() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _trilhaSelecionada = prefs.getString('trilha_selecionada');
+    });
   }
 
   @override
@@ -131,7 +160,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
                         Text(
-                          'Preparado para conhecer a',
+                          'Preparado para conhecer as',
                           style: TextStyle(
                             color: AppColors.preparedText,
                             fontSize: 18,
@@ -140,7 +169,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Trilha das Árvores Úteis?',
+                          'Trilhas da ESALQ?',
                           style: TextStyle(
                             color: AppColors.preparedText,
                             fontSize: 18,
@@ -162,8 +191,9 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     ),
                     const SizedBox(height: 50),
 
+                    // Balãozinho com nova frase
                     SizedBox(
-                      height: 250,
+                      height: 210,
                       width: double.infinity,
                       child: Stack(
                         children: [
@@ -184,8 +214,8 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: const Text(
-                                'Clique para abrir o mapa\n'
-                                'e começar a aventura!',
+                                'Selecione a trilha que\n'
+                                'deseja percorrer!',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: AppColors.loginBg,
@@ -207,17 +237,27 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                       ),
                     ),
 
-                    const SizedBox(height: 8),
-
+                    // Select box para escolher a trilha
                     Center(
-                      child: SizedBox(
-                        child: AppButton(
-                          label: 'ABRIR O MAPA',
-                          onPressed: () => Navigator.pushNamed(context, '/mapa'),
-                        ),
+                      child: DropdownButton<String>(
+                        value: _trilhaSelecionada,
+                        onChanged: (String? newValue) async {
+                          setState(() {
+                            _trilhaSelecionada = newValue;
+                          });
+
+                          final prefs = await SharedPreferences.getInstance();
+                          prefs.setString('trilha_selecionada', newValue!); // Salva a trilha selecionada
+                        },
+                        hint: const Text('Selecione uma Trilha'),
+                        items: _trilhas.map<DropdownMenuItem<String>>((Trilha trilha) {
+                          return DropdownMenuItem<String>(
+                            value: trilha.nome,
+                            child: Text(trilha.nome),
+                          );
+                        }).toList(),
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),

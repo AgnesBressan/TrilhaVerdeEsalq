@@ -103,15 +103,13 @@ class ApiClient {
       headers: _headers(token: t),
     );
     if (r.statusCode != 200) throw Exception('Falha ao carregar árvores');
+    
+    // ── DEBUG — remova depois ──
+    debugPrint('JSON árvores: ${r.body}');
+    // ──────────────────────────
+    
     final data = jsonDecode(r.body) as List;
     return data.map((e) => Arvore.fromJson(e as Map<String, dynamic>)).toList();
-  }
-
-  Future<Arvore> obterArvore(String trilha, int codigo) async {
-    final t = await _getToken();
-    final r = await _http.get(_u('/api/arvores/$trilha/$codigo'), headers: _headers(token: t));
-    if (r.statusCode != 200) throw Exception('Falha ao carregar dados da árvore');
-    return Arvore.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
   }
 
   // ================== Perguntas ==================

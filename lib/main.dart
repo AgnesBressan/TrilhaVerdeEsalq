@@ -16,6 +16,7 @@ import 'screens/tela_quiz.dart';
 import 'screens/tela_acertou.dart';
 import 'screens/tela_tutorial.dart';
 import 'screens/tela_ganhou.dart';
+import 'screens/tela_galeria_arvore.dart';
 
 void main() {
   runApp(const TrilhaVerdeApp());
@@ -51,6 +52,7 @@ class TrilhaVerdeApp extends StatelessWidget {
         '/acertou':     (context) => const TelaAcertou(),
         '/tutorial':    (context) => const TelaTutorial(),
         '/ganhou':      (context) => const TelaGanhou(),
+        '/galeria_arvore': (context) => const TelaGaleriaArvore(),
       },
       // opcional: fallback pra rotas desconhecidas
       onUnknownRoute: (settings) => MaterialPageRoute(
