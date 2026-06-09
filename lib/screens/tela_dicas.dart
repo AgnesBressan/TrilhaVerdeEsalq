@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../services/api_cliente.dart';
@@ -26,18 +27,15 @@ class _TelaDicasState extends State<TelaDicas> {
   bool _loading = true;
   String? _error;
   bool _gotArgs = false;
+  bool _marcandoLida = false;
+  bool _finalizouTrilha = false;
 
   @override
   void initState() {
     super.initState();
     _player = AudioPlayer();
-
     _player.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _playerState = state;
-        });
-      }
+      if (mounted) setState(() => _playerState = state);
     });
   }
 
@@ -96,6 +94,11 @@ class _TelaDicasState extends State<TelaDicas> {
         _perguntaSelecionada = perguntaSorteada;
         _loading = false;
       });
+
+      // Se não tem perguntas, marca como lida automaticamente
+      if (perguntaSorteada == null) {
+        await _marcarComoLida();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -105,8 +108,44 @@ class _TelaDicasState extends State<TelaDicas> {
     }
   }
 
+  Future<void> _marcarComoLida() async {
+    if (_marcandoLida) return;
+    setState(() => _marcandoLida = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nickname = prefs.getString('ultimo_usuario');
+
+      if (nickname != null && _trilha != null && _arvoreCodigo != null) {
+        // Salva o troféu
+        await _api.salvarTrofeu(nickname, _trilha!, _arvoreCodigo!);
+
+        // Verifica se finalizou a trilha
+        // Busca total de árvores ativas da trilha
+        final todasArvores =
+            await _api.listarArvores(trilha: _trilha!, ativas: true);
+        final trofeus = await _api.listarTrofeus(nickname);
+
+        final totalAtivas = todasArvores.length;
+        final totalLidas = trofeus
+            .where((t) => t.trilhaNome == _trilha)
+            .length;
+
+        if (mounted) {
+          setState(() {
+            _finalizouTrilha = totalLidas >= totalAtivas;
+            _marcandoLida = false;
+          });
+        }
+      }
+    } catch (_) {
+      // ignora erro silenciosamente — pode já ter sido salvo antes
+      if (mounted) setState(() => _marcandoLida = false);
+    }
+  }
+
   Future<void> _toggleAudioPlayback() async {
-    const baseUrl = 'http://10.0.2.2:3001';
+    const baseUrl = 'http://200.144.255.186:3001';
 
     final audioPath = _perguntaSelecionada?.audioUrl;
     if (audioPath == null || audioPath.isEmpty) {
@@ -119,12 +158,8 @@ class _TelaDicasState extends State<TelaDicas> {
     if (_playerState == PlayerState.playing) {
       await _player.pause();
     } else {
-      String finalUrl;
-      if (audioPath.startsWith('http')) {
-        finalUrl = audioPath;
-      } else {
-        finalUrl = baseUrl + audioPath;
-      }
+      final finalUrl =
+          audioPath.startsWith('http') ? audioPath : baseUrl + audioPath;
       await _player.play(UrlSource(finalUrl));
     }
   }
@@ -135,14 +170,13 @@ class _TelaDicasState extends State<TelaDicas> {
 
   void _abrirGaleria() {
     final foto = _arvore?.fotoUrl;
-
     if (foto == null || foto.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nenhuma foto disponível para esta árvore.')),
+        const SnackBar(
+            content: Text('Nenhuma foto disponível para esta árvore.')),
       );
       return;
     }
-
     Navigator.pushNamed(
       context,
       '/galeria_arvore',
@@ -182,6 +216,7 @@ class _TelaDicasState extends State<TelaDicas> {
 
     final nomeArvore = _arvore?.nome ?? 'Árvore ${_arvoreCodigo ?? ''}';
     final especie = (_arvore?.especie ?? '').trim();
+    final temPerguntas = _perguntaSelecionada != null;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -191,6 +226,7 @@ class _TelaDicasState extends State<TelaDicas> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Cabeçalho ──────────────────────────────────
               RichText(
                 text: const TextSpan(
                   children: [
@@ -241,6 +277,7 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 50),
 
+              // ── Balão mascote + galeria (sempre igual) ──────
               SizedBox(
                 height: 230,
                 width: double.infinity,
@@ -251,7 +288,8 @@ class _TelaDicasState extends State<TelaDicas> {
                       right: 3,
                       child: Container(
                         constraints: BoxConstraints(maxWidth: w * 0.70),
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         decoration: const BoxDecoration(
                           color: AppColors.speechBg32,
                           borderRadius: BorderRadius.only(
@@ -265,6 +303,7 @@ class _TelaDicasState extends State<TelaDicas> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // ── texto do balão sempre igual ──
                             const Text(
                               'Vamos conhecer um pouco\nmais sobre a árvore?',
                               textAlign: TextAlign.center,
@@ -279,12 +318,15 @@ class _TelaDicasState extends State<TelaDicas> {
                               child: ElevatedButton(
                                 onPressed: _abrirGaleria,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFA7C957),
+                                  backgroundColor:
+                                      const Color(0xFFA7C957),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
+                                    borderRadius:
+                                        BorderRadius.circular(18),
                                   ),
                                 ),
                                 child: const Text(
@@ -317,71 +359,142 @@ class _TelaDicasState extends State<TelaDicas> {
 
               const SizedBox(height: 14),
 
-              Text(
-                _perguntaSelecionada?.texto ??
-                    'Nenhuma descrição disponível para esta árvore.',
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  height: 1.45,
-                  color: Color(0xFF4B4B4B),
+              // ── Corpo condicional ───────────────────────────
+              if (temPerguntas) ...[
+                // Texto da dica
+                Text(
+                  _perguntaSelecionada?.texto ?? '',
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    height: 1.45,
+                    color: Color(0xFF4B4B4B),
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-              Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                // Player de áudio
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.panelBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: _toggleAudioPlayback,
+                          iconSize: 30,
+                          icon: Icon(
+                            _playerState == PlayerState.playing
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: AppColors.play,
+                          ),
+                        ),
+                        Image.asset(
+                          'lib/assets/img/sound.png',
+                          height: 30,
+                          fit: BoxFit.contain,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Center(
+                  child: AppButton(
+                    label: 'RESPONDER A PERGUNTA',
+                    onPressed: () {
+                      _stopAudio();
+                      Navigator.pushNamed(
+                        context,
+                        '/quiz',
+                        arguments: {
+                          'pergunta': _perguntaSelecionada!,
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+              ] else ...[
+                                // ── Sem perguntas: mensagem + botões ───────────
+                const SizedBox(height: 8),
+
+                // Mensagem no lugar da descrição
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.panelBg,
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        onPressed: _toggleAudioPlayback,
-                        iconSize: 30,
-                        icon: Icon(
-                          _playerState == PlayerState.playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: AppColors.play,
+                      Icon(Icons.check_circle_outline,
+                          color: Colors.green.shade600, size: 22),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Árvore registrada com sucesso!\nContinue explorando a trilha.',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.45,
+                            color: Color(0xFF4B4B4B),
+                          ),
                         ),
-                      ),
-                      Image.asset(
-                        'lib/assets/img/sound.png',
-                        height: 30,
-                        fit: BoxFit.contain,
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 30),
 
-              Center(
-                child: AppButton(
-                  label: _perguntaSelecionada == null
-                      ? 'SEM PERGUNTAS NESTA ÁRVORE'
-                      : 'RESPONDER A PERGUNTA',
-                  onPressed: _perguntaSelecionada == null
-                      ? null
-                      : () {
-                          _stopAudio();
-
-                          Navigator.pushNamed(
-                            context,
-                            '/quiz',
-                            arguments: {
-                              'pergunta': _perguntaSelecionada!,
-                            },
-                          );
-                        },
-                ),
-              ),
+                // Botões — se finalizou trilha vai para /ganhou,
+                // caso contrário mostra mapa e pontuação
+                if (_marcandoLida)
+                  const Center(child: CircularProgressIndicator())
+                else if (_finalizouTrilha)
+                  Center(
+                    child: AppButton(
+                      label: 'SEGUIR',
+                      onPressed: () => Navigator.pushReplacementNamed(
+                        context,
+                        '/ganhou',
+                      ),
+                    ),
+                  )
+                else
+                  Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        AppButton(
+                          label: 'IR AO MAPA',
+                          onPressed: () =>
+                              Navigator.pushReplacementNamed(
+                                  context, '/mapa'),
+                        ),
+                        AppButton(
+                          label: 'PONTUAÇÃO',
+                          onPressed: () =>
+                              Navigator.pushReplacementNamed(
+                                  context, '/pontuacao'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ],
           ),
         ),

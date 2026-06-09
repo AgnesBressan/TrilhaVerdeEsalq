@@ -310,7 +310,7 @@ class _TelaQRCodeState extends State<TelaQRCode> {
                       children: [
                         Text(
                           // ALTERAÇÃO AQUI: Adiciona o código da árvore
-                          'Lendo QR de ${_tituloArvore ?? "..."}$codigoStr', 
+                          'Lendo QR de ${_tituloArvore ?? "..."}', 
                           style: const TextStyle(
                             color: AppColors.principal_title,
                             fontWeight: FontWeight.w700,
