@@ -111,7 +111,10 @@ class ApiClient {
     final t = await _getToken();
     final r = await _http.get(_u('/api/arvores/$trilha/$codigo'), headers: _headers(token: t));
     if (r.statusCode != 200) throw Exception('Falha ao carregar dados da árvore');
-    return Arvore.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+    final data = jsonDecode(r.body) as Map<String, dynamic>;
+    // O endpoint de árvore única não retorna trilha_nome, diferente do de listagem.
+    data['trilha_nome'] ??= trilha;
+    return Arvore.fromJson(data);
   }
 
   // ================== Perguntas ==================
