@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos a câmera para ler os QR Codes das árvores e prédios históricos da trilha.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Precisamos acessar suas fotos para você escolher a imagem do seu perfil.</string>
 </dict>
 </plist>
