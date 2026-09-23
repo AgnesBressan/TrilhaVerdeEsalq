@@ -2,53 +2,47 @@
 
 class Pergunta {
   final int id;
-  final String trilhaNome;
-  final int arvoreCodigo;
+  final int pontoInteresseCodigo;
   final String? enunciado;
   final String? itemA;
   final String? itemB;
   final String? itemC;
   final String? itemD;
-  final String? itemE;
   final String? texto;
   final String? audioUrl;
-  final String respostaCorreta; // <-- Nome corrigido para camelCase
+  final String respostaCorreta;
   final String? dica;
-  final String? audioDicaUrl;  // <-- Nome corrigido para camelCase
+  final String? audioDicaUrl;
 
   Pergunta({
     required this.id,
-    required this.trilhaNome,
-    required this.arvoreCodigo,
+    required this.pontoInteresseCodigo,
     this.enunciado,
     this.itemA,
     this.itemB,
     this.itemC,
     this.itemD,
-    this.itemE,
     this.texto,
     this.audioUrl,
-    required this.respostaCorreta, // <-- Nome corrigido
+    required this.respostaCorreta,
     this.dica,
-    this.audioDicaUrl,            // <-- Nome corrigido
+    this.audioDicaUrl,
   });
 
   factory Pergunta.fromJson(Map<String, dynamic> json) {
     return Pergunta(
       id: json['id'],
-      trilhaNome: json['trilha_nome'],
-      arvoreCodigo: json['arvore_codigo'],
+      pontoInteresseCodigo: json['ponto_interesse_codigo'],
       enunciado: json['enunciado'],
       itemA: json['item_a'],
       itemB: json['item_b'],
       itemC: json['item_c'],
       itemD: json['item_d'],
-      itemE: json['item_e'],
       texto: json['texto'],
       audioUrl: json['audio_url'],
-      respostaCorreta: json['resposta_correta'], // Lê do JSON
+      respostaCorreta: json['resposta_correta'],
       dica: json['dica'],
-      audioDicaUrl: json['audio_dica_url'],      // Lê do JSON
+      audioDicaUrl: json['audio_dica_url'],
     );
   }
 }

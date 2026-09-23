@@ -6,8 +6,9 @@ import '../models/pergunta.dart'; // Importa o modelo Pergunta
 
 class TelaErrou extends StatefulWidget {
   final Pergunta pergunta;
+  final String? trilha;
 
-  const TelaErrou({super.key, required this.pergunta});
+  const TelaErrou({super.key, required this.pergunta, this.trilha});
 
   @override
   State<TelaErrou> createState() => _TelaErrouState();
@@ -180,6 +181,7 @@ class _TelaErrouState extends State<TelaErrou> {
                           '/quiz',
                           arguments: {
                             'pergunta': widget.pergunta,
+                            'trilha': widget.trilha,
                           },
                         );
                       },

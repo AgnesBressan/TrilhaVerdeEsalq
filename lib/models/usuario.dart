@@ -5,7 +5,7 @@ class Usuario {
   final String nome;
   final int? idade;
   final String? anoEscolar;
-  final int numArvoresVisitadas;
+  final int numPontosVisitados;
   final String? fotoMime;
 
   Usuario({
@@ -13,8 +13,8 @@ class Usuario {
     required this.nome,
     this.idade,
     this.anoEscolar,
-    required this.numArvoresVisitadas,
-    this.fotoMime, // [ALTERADO]
+    required this.numPontosVisitados,
+    this.fotoMime,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> j) => Usuario(
@@ -22,7 +22,7 @@ class Usuario {
         nome: j['nome'] as String? ?? '',
         idade: j['idade'] as int?,
         anoEscolar: j['ano_escolar'] as String?,
-        numArvoresVisitadas: (j['num_arvores_visitadas'] as int?) ?? 0,
+        numPontosVisitados: (j['num_pontos_visitados'] as int?) ?? 0,
         fotoMime: j['foto_mime'] as String?,
       );
 
@@ -31,7 +31,7 @@ class Usuario {
         'nome': nome,
         if (idade != null) 'idade': idade,
         if (anoEscolar != null) 'ano_escolar': anoEscolar,
-        'num_arvores_visitadas': numArvoresVisitadas,
+        'num_pontos_visitados': numPontosVisitados,
         if (fotoMime != null) 'foto_mime': fotoMime,
       };
 
@@ -40,7 +40,7 @@ class Usuario {
     String? nome,
     int? idade,
     String? anoEscolar,
-    int? numArvoresVisitadas,
+    int? numPontosVisitados,
     String? fotoMime,
   }) {
     return Usuario(
@@ -48,7 +48,7 @@ class Usuario {
       nome: nome ?? this.nome,
       idade: idade ?? this.idade,
       anoEscolar: anoEscolar ?? this.anoEscolar,
-      numArvoresVisitadas: numArvoresVisitadas ?? this.numArvoresVisitadas,
+      numPontosVisitados: numPontosVisitados ?? this.numPontosVisitados,
       fotoMime: fotoMime ?? this.fotoMime,
     );
   }

@@ -1,11 +1,12 @@
 class Trilha {
   final String nome;
-  final int quantidadeArvores; // combina com sua tabela
+  final int quantidadePontosInteresse; // combina com sua tabela
 
-  Trilha({required this.nome, required this.quantidadeArvores});
+  Trilha({required this.nome, required this.quantidadePontosInteresse});
 
   factory Trilha.fromJson(Map<String, dynamic> j) => Trilha(
         nome: j['nome'] as String,
-        quantidadeArvores: (j['quantidade_arvores'] as num?)?.toInt() ?? 0,
+        quantidadePontosInteresse:
+            (j['quantidade_pontos_interesse'] as num?)?.toInt() ?? 0,
       );
 }

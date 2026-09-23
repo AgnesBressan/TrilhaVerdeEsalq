@@ -664,15 +664,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.5+1"
-  qr_code_scanner:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "86b7ca33af56e1dab07179f3a3a03784310ed65c"
-      url: "https://github.com/juliuscanute/qr_code_scanner.git"
-    source: git
-    version: "1.0.0"
   rxdart:
     dependency: transitive
     description:

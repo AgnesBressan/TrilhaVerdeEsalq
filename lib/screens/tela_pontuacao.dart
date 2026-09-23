@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/ponto_interesse.dart';
 import '../models/trofeu.dart';
 import '../models/usuario.dart';
 import '../services/api_cliente.dart';
@@ -22,7 +23,7 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
   bool _isLoading = true;
   Usuario? _usuario;
   List<Trofeu> _trofeusDaTrilha = []; // só troféus da trilha selecionada
-  int _totalArvoresDaTrilha = 0;
+  int _totalPontosDaTrilha = 0;
   String? _trilhaSelecionada;
 
   @override
@@ -54,32 +55,34 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
         setState(() {
           _usuario = usuario;
           _trofeusDaTrilha = [];
-          _totalArvoresDaTrilha = 0;
+          _totalPontosDaTrilha = 0;
         });
         return;
       }
 
-      // Busca árvores da trilha, todos os troféus e dados do usuário em paralelo
+      // Busca pontos da trilha, todos os troféus e dados do usuário em paralelo
       final resultados = await Future.wait([
-        _api.listarArvores(trilha: trilha, ativas: true),
+        _api.listarPontosInteresse(trilha: trilha, ativas: true),
         _api.listarTrofeus(nickname),
         _api.obterUsuario(nickname),
       ]);
 
-      final arvoresDaTrilha = resultados[0] as List;
+      final pontosDaTrilha = resultados[0] as List<PontoInteresse>;
       final todosTrofeus = resultados[1] as List<Trofeu>;
       final usuario = resultados[2] as Usuario?;
 
-      // Filtra troféus apenas da trilha selecionada
+      // A tabela trofeu não guarda trilha_nome (um ponto pode pertencer a
+      // mais de uma trilha), então filtramos comparando os códigos.
+      final codigosDaTrilha = pontosDaTrilha.map((p) => p.codigo).toSet();
       final trofeusDaTrilha = todosTrofeus
-          .where((t) => t.trilhaNome == trilha)
+          .where((t) => codigosDaTrilha.contains(t.pontoInteresseCodigo))
           .toList();
 
       if (!mounted) return;
       setState(() {
         _usuario = usuario;
         _trofeusDaTrilha = trofeusDaTrilha;
-        _totalArvoresDaTrilha = arvoresDaTrilha.length;
+        _totalPontosDaTrilha = pontosDaTrilha.length;
       });
     } catch (e) {
       debugPrint('Erro ao carregar pontuação: $e');
@@ -91,7 +94,7 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
   @override
   Widget build(BuildContext context) {
     final lidas = _trofeusDaTrilha.length;
-    final total = _totalArvoresDaTrilha;
+    final total = _totalPontosDaTrilha;
     final percent = total > 0
         ? (lidas / total).clamp(0.0, 1.0)
         : 0.0;
@@ -198,7 +201,7 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Árvores\nobservadas',
+                              'Pontos\nobservados',
                               textAlign: TextAlign.center,
                               style:
                                   TextStyle(fontSize: 13, height: 1.1),
@@ -237,7 +240,7 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
                         ),
                         itemBuilder: (context, index) {
                           final titulo =
-                              _trofeusDaTrilha[index].arvoreNome;
+                              _trofeusDaTrilha[index].pontoInteresseNome;
                           return _BadgeItem(title: titulo);
                         },
                       )
@@ -246,7 +249,7 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
                         child: Padding(
                           padding: EdgeInsets.only(top: 8),
                           child: Text(
-                            'Você ainda não observou nenhuma árvore\nnesta trilha.',
+                            'Você ainda não visitou nenhum ponto\ndesta trilha.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.black54),
                           ),

@@ -5,7 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/arvore.dart';
+import '../models/ponto_interesse.dart';
 import '../models/trofeu.dart';
 import '../services/api_cliente.dart';
 import '../theme/app_colors.dart';
@@ -27,8 +27,9 @@ class _TelaMapaState extends State<TelaMapa> {
   String? _trilhaNome;
   String? _nickname;
 
-  // Árvores com coordenadas, ordenadas por posição relativa
-  List<Arvore> _arvores = [];
+  // Pontos de interesse (árvores e prédios históricos) com coordenadas,
+  // ordenados por posição relativa dentro da trilha.
+  List<PontoInteresse> _pontos = [];
   // codigo -> posição relativa (1, 2, 3...)
   Map<int, int> _posicaoRelativa = {};
   Set<int> _codigosVisitados = {};
@@ -36,7 +37,7 @@ class _TelaMapaState extends State<TelaMapa> {
   bool _loading = true;
   bool _forcarMapa = false;
   String? _erro;
-  Arvore? _arvoreInfo;
+  PontoInteresse? _pontoInfo;
 
   static const _centroEsalq = LatLng(-22.7114, -47.6306);
 
@@ -76,50 +77,54 @@ class _TelaMapaState extends State<TelaMapa> {
 
     try {
       final resultados = await Future.wait([
-        _api.listarArvores(trilha: trilha, ativas: true),
+        _api.listarPontosInteresse(trilha: trilha, ativas: true),
         if (nickname != null && nickname.isNotEmpty)
           _api.listarTrofeus(nickname)
         else
           Future.value(<Trofeu>[]),
       ]);
 
-      final todasArvores = resultados[0] as List<Arvore>;
+      final todosPontos = resultados[0] as List<PontoInteresse>;
       final trofeus = resultados[1] as List<Trofeu>;
 
-      // Ordena todas as ativas pelo campo ordem
-      final ativasOrdenadas = List<Arvore>.from(todasArvores)
+      // Ordena todos os ativos pelo campo ordem
+      final ativosOrdenados = List<PontoInteresse>.from(todosPontos)
         ..sort((a, b) => a.ordem.compareTo(b.ordem));
 
       // Monta posição relativa: codigo -> 1, 2, 3...
       final posicao = <int, int>{};
-      for (int i = 0; i < ativasOrdenadas.length; i++) {
-        posicao[ativasOrdenadas[i].codigo] = i + 1;
+      for (int i = 0; i < ativosOrdenados.length; i++) {
+        posicao[ativosOrdenados[i].codigo] = i + 1;
       }
 
-      // Filtra só as que têm coordenadas
-      final comCoordenadas = ativasOrdenadas
-          .where((a) => a.latitude != null && a.longitude != null)
+      // Filtra só os que têm coordenadas
+      final comCoordenadas = ativosOrdenados
+          .where((p) => p.latitude != null && p.longitude != null)
           .toList();
 
+      // Um troféu pertence à trilha se o ponto que ele referencia está
+      // na lista de pontos ativos dessa trilha (a tabela trofeu não guarda
+      // trilha_nome — um ponto pode pertencer a mais de uma trilha).
+      final codigosDaTrilha = ativosOrdenados.map((p) => p.codigo).toSet();
       final visitados = trofeus
-          .where((t) => t.trilhaNome == trilha)
-          .map((t) => t.arvoreCodigo)
+          .where((t) => codigosDaTrilha.contains(t.pontoInteresseCodigo))
+          .map((t) => t.pontoInteresseCodigo)
           .toSet();
 
       setState(() {
-        _arvores = comCoordenadas;
+        _pontos = comCoordenadas;
         _posicaoRelativa = posicao;
         _codigosVisitados = visitados;
         _loading = false;
       });
 
-      // Centraliza na próxima árvore a ser lida
+      // Centraliza no próximo ponto a ser lido
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted) {
-        final proxima = _proximaALer();
-        if (proxima != null) {
+        final proximo = _proximoALer();
+        if (proximo != null) {
           _mapController.move(
-            LatLng(proxima.latitude!, proxima.longitude!),
+            LatLng(proximo.latitude!, proximo.longitude!),
             18.0,
           );
         } else if (comCoordenadas.isNotEmpty) {
@@ -134,38 +139,32 @@ class _TelaMapaState extends State<TelaMapa> {
     }
   }
 
-  LatLng _calcularCentro(List<Arvore> arvores) {
-    final lat = arvores.map((a) => a.latitude!).reduce((a, b) => a + b) /
-        arvores.length;
-    final lng = arvores.map((a) => a.longitude!).reduce((a, b) => a + b) /
-        arvores.length;
+  LatLng _calcularCentro(List<PontoInteresse> pontos) {
+    final lat = pontos.map((p) => p.latitude!).reduce((a, b) => a + b) /
+        pontos.length;
+    final lng = pontos.map((p) => p.longitude!).reduce((a, b) => a + b) /
+        pontos.length;
     return LatLng(lat, lng);
   }
 
-  bool _foiVisitada(Arvore a) => _codigosVisitados.contains(a.codigo);
+  bool _foiVisitado(PontoInteresse p) => _codigosVisitados.contains(p.codigo);
 
-  int _posicao(Arvore a) => _posicaoRelativa[a.codigo] ?? a.ordem;
+  int _posicao(PontoInteresse p) => _posicaoRelativa[p.codigo] ?? p.ordem;
 
-  // Retorna a próxima árvore a ser lida (menor posição não visitada)
-  Arvore? _proximaALer() {
-    final naoVisitadas = _arvores
-        .where((a) => !_foiVisitada(a))
+  // Retorna o próximo ponto a ser lido (menor posição não visitada)
+  PontoInteresse? _proximoALer() {
+    final naoVisitados = _pontos
+        .where((p) => !_foiVisitado(p))
         .toList();
-    if (naoVisitadas.isEmpty) return null;
-    naoVisitadas.sort((a, b) => _posicao(a).compareTo(_posicao(b)));
-    return naoVisitadas.first;
+    if (naoVisitados.isEmpty) return null;
+    naoVisitados.sort((a, b) => _posicao(a).compareTo(_posicao(b)));
+    return naoVisitados.first;
   }
 
-  // Verifica se essa árvore é a próxima a ser lida
-  bool _isProxima(Arvore a) {
-    final proxima = _proximaALer();
-    return proxima?.codigo == a.codigo;
-  }
-
-  // Verifica se o usuário pode interagir com essa árvore
-  // Só pode interagir com visitadas (ver info) ou com a próxima a ler
-  bool _desbloqueada(Arvore a) {
-    return _foiVisitada(a) || _isProxima(a);
+  // Verifica se esse ponto é o próximo a ser lido
+  bool _isProximo(PontoInteresse p) {
+    final proximo = _proximoALer();
+    return proximo?.codigo == p.codigo;
   }
 
   @override
@@ -182,7 +181,7 @@ class _TelaMapaState extends State<TelaMapa> {
                   ? const Center(child: CircularProgressIndicator())
                   : _erro != null
                       ? _buildErro()
-                      : _arvores.isEmpty && !_forcarMapa
+                      : _pontos.isEmpty && !_forcarMapa
                           ? _buildSemCoordenadas()
                           : _buildMapa(),
             ),
@@ -193,8 +192,8 @@ class _TelaMapaState extends State<TelaMapa> {
   }
 
   Widget _buildHeader() {
-    final visitadas = _codigosVisitados.length;
-    final total = _arvores.length;
+    final visitados = _codigosVisitados.length;
+    final total = _pontos.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       child: Row(
@@ -249,7 +248,7 @@ class _TelaMapaState extends State<TelaMapa> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '$visitadas / $total',
+                '$visitados / $total',
                 style: const TextStyle(
                   color: AppColors.loginBg,
                   fontWeight: FontWeight.w700,
@@ -294,7 +293,7 @@ class _TelaMapaState extends State<TelaMapa> {
                 size: 72, color: Colors.orange.shade300),
             const SizedBox(height: 20),
             Text(
-              'Árvores sem localização',
+              'Pontos sem localização',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -303,7 +302,7 @@ class _TelaMapaState extends State<TelaMapa> {
             ),
             const SizedBox(height: 10),
             Text(
-              'As árvores da trilha "$_trilhaNome" ainda não possuem coordenadas geográficas cadastradas.',
+              'Os pontos de interesse da trilha "$_trilhaNome" ainda não possuem coordenadas geográficas cadastradas.',
               textAlign: TextAlign.center,
               style:
                   const TextStyle(fontSize: 14, color: Colors.black54),
@@ -342,13 +341,13 @@ class _TelaMapaState extends State<TelaMapa> {
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: _arvores.isNotEmpty
-                ? _calcularCentro(_arvores)
+            initialCenter: _pontos.isNotEmpty
+                ? _calcularCentro(_pontos)
                 : _centroEsalq,
             initialZoom: 17.0,
             maxZoom: 20.0,
             minZoom: 13.0,
-            onTap: (_, __) => setState(() => _arvoreInfo = null),
+            onTap: (_, __) => setState(() => _pontoInfo = null),
           ),
           children: [
             TileLayer(
@@ -360,20 +359,21 @@ class _TelaMapaState extends State<TelaMapa> {
                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             ),
             MarkerLayer(
-              markers: _arvores.map((arvore) {
-                final proxima = _isProxima(arvore);
-                final visitada = _foiVisitada(arvore);
+              markers: _pontos.map((ponto) {
+                final proximo = _isProximo(ponto);
+                final visitado = _foiVisitado(ponto);
                 return Marker(
-                  point: LatLng(arvore.latitude!, arvore.longitude!),
-                  width: proxima ? 64 : 56,
-                  height: proxima ? 76 : 68,
+                  point: LatLng(ponto.latitude!, ponto.longitude!),
+                  width: proximo ? 64 : 56,
+                  height: proximo ? 76 : 68,
                   child: GestureDetector(
-                    onTap: () => setState(() => _arvoreInfo = arvore),
-                    child: _ArvoreMarker(
-                      posicao: _posicao(arvore),
-                      visitada: visitada,
-                      proxima: proxima,
-                      selected: _arvoreInfo?.codigo == arvore.codigo,
+                    onTap: () => setState(() => _pontoInfo = ponto),
+                    child: _PontoMarker(
+                      posicao: _posicao(ponto),
+                      tipo: ponto.tipo,
+                      visitado: visitado,
+                      proximo: proximo,
+                      selected: _pontoInfo?.codigo == ponto.codigo,
                     ),
                   ),
                 );
@@ -382,16 +382,16 @@ class _TelaMapaState extends State<TelaMapa> {
           ],
         ),
 
-        // Card da árvore selecionada
-        if (_arvoreInfo != null)
+        // Card do ponto selecionado
+        if (_pontoInfo != null)
           Positioned(
             bottom: 16,
             left: 16,
             right: 16,
-            child: _buildCardArvore(_arvoreInfo!),
+            child: _buildCardPonto(_pontoInfo!),
           ),
 
-        // Botão recentrar na próxima
+        // Botão recentrar no próximo
         Positioned(
           top: 12,
           right: 12,
@@ -400,14 +400,14 @@ class _TelaMapaState extends State<TelaMapa> {
             backgroundColor: Colors.white,
             elevation: 4,
             onPressed: () {
-              final proxima = _proximaALer();
-              if (proxima != null) {
+              final proximo = _proximoALer();
+              if (proximo != null) {
                 _mapController.move(
-                  LatLng(proxima.latitude!, proxima.longitude!),
+                  LatLng(proximo.latitude!, proximo.longitude!),
                   18.0,
                 );
-              } else if (_arvores.isNotEmpty) {
-                _mapController.move(_calcularCentro(_arvores), 17.5);
+              } else if (_pontos.isNotEmpty) {
+                _mapController.move(_calcularCentro(_pontos), 17.5);
               }
             },
             child: const Icon(Icons.my_location,
@@ -443,13 +443,13 @@ class _TelaMapaState extends State<TelaMapa> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _legendaItem(
-              color: const Color(0xFF2E7D32), label: 'Visitada'),
+              color: const Color(0xFF2E7D32), label: 'Visitado'),
           const SizedBox(height: 4),
           _legendaItem(
-              color: Colors.orange.shade600, label: 'Próxima'),
+              color: Colors.orange.shade600, label: 'Próximo'),
           const SizedBox(height: 4),
           _legendaItem(
-              color: Colors.grey.shade400, label: 'Bloqueada'),
+              color: Colors.grey.shade400, label: 'Bloqueado'),
         ],
       ),
     );
@@ -471,10 +471,10 @@ class _TelaMapaState extends State<TelaMapa> {
     );
   }
 
-  Widget _buildCardArvore(Arvore arvore) {
-    final visitada = _foiVisitada(arvore);
-    final proxima = _isProxima(arvore);
-    final pos = _posicao(arvore);
+  Widget _buildCardPonto(PontoInteresse ponto) {
+    final visitado = _foiVisitado(ponto);
+    final proximo = _isProximo(ponto);
+    final pos = _posicao(ponto);
 
     return Card(
       elevation: 8,
@@ -488,10 +488,11 @@ class _TelaMapaState extends State<TelaMapa> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ArvoreIcone(
+                _PontoIcone(
                   posicao: pos,
-                  visitada: visitada,
-                  proxima: proxima,
+                  tipo: ponto.tipo,
+                  visitado: visitado,
+                  proximo: proximo,
                   size: 64,
                 ),
                 const SizedBox(width: 14),
@@ -508,19 +509,19 @@ class _TelaMapaState extends State<TelaMapa> {
                           ),
                           const SizedBox(width: 6),
                           _badge(
-                            visitada
-                                ? '✓ Visitada'
-                                : proxima
-                                    ? '📍 Próxima'
-                                    : '🔒 Bloqueada',
-                            visitada
+                            visitado
+                                ? '✓ Visitado'
+                                : proximo
+                                    ? '📍 Próximo'
+                                    : '🔒 Bloqueado',
+                            visitado
                                 ? Colors.green.shade100
-                                : proxima
+                                : proximo
                                     ? Colors.orange.shade100
                                     : Colors.grey.shade200,
-                            visitada
+                            visitado
                                 ? Colors.green.shade800
-                                : proxima
+                                : proximo
                                     ? Colors.orange.shade800
                                     : Colors.grey.shade600,
                           ),
@@ -528,17 +529,17 @@ class _TelaMapaState extends State<TelaMapa> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        arvore.nome,
+                        ponto.nome,
                         style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700),
                       ),
-                      if (arvore.especie != null &&
-                          arvore.especie!.isNotEmpty)
+                      if (ponto.especie != null &&
+                          ponto.especie!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            arvore.especie!,
+                            ponto.especie!,
                             style: const TextStyle(
                               fontSize: 13,
                               fontStyle: FontStyle.italic,
@@ -546,12 +547,11 @@ class _TelaMapaState extends State<TelaMapa> {
                             ),
                           ),
                         ),
-                      // ── quantidade de perguntas removida ──
                     ],
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _arvoreInfo = null),
+                  onTap: () => setState(() => _pontoInfo = null),
                   child: const Padding(
                     padding: EdgeInsets.only(left: 8),
                     child: Icon(Icons.close,
@@ -562,7 +562,7 @@ class _TelaMapaState extends State<TelaMapa> {
             ),
 
             // ── Botão Ler QR Code no estilo do login ──
-            if (proxima) ...[
+            if (proximo) ...[
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
@@ -577,14 +577,15 @@ class _TelaMapaState extends State<TelaMapa> {
                     ),
                   ),
                   onPressed: () {
-                    setState(() => _arvoreInfo = null);
+                    setState(() => _pontoInfo = null);
                     Navigator.pushNamed(
                       context,
                       '/qrcode',
                       arguments: {
                         'trilha': _trilhaNome,
-                        'arvoreCodigo': arvore.codigo,
-                        'titulo': arvore.nome,
+                        'arvoreCodigo': ponto.codigo,
+                        'titulo': ponto.nome,
+                        'qrcodeUrl': ponto.qrcodeUrl,
                       },
                     ).then((_) {
                       if (mounted && _trilhaNome != null) {
@@ -606,7 +607,7 @@ class _TelaMapaState extends State<TelaMapa> {
             ],
 
             // ── Mensagem bloqueada ──
-            if (!visitada && !proxima) ...[
+            if (!visitado && !proximo) ...[
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -615,7 +616,7 @@ class _TelaMapaState extends State<TelaMapa> {
                       size: 14, color: Colors.grey.shade400),
                   const SizedBox(width: 6),
                   Text(
-                    'Leia as árvores anteriores primeiro',
+                    'Leia os pontos anteriores primeiro',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade400,
@@ -646,27 +647,29 @@ class _TelaMapaState extends State<TelaMapa> {
 }
 
 // ── Marcador no mapa ────────────────────────────────────────────
-class _ArvoreMarker extends StatelessWidget {
+class _PontoMarker extends StatelessWidget {
   final int posicao;
-  final bool visitada;
-  final bool proxima;
+  final String tipo;
+  final bool visitado;
+  final bool proximo;
   final bool selected;
 
-  const _ArvoreMarker({
+  const _PontoMarker({
     required this.posicao,
-    required this.visitada,
-    required this.proxima,
+    required this.tipo,
+    required this.visitado,
+    required this.proximo,
     required this.selected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final size = proxima ? 52.0 : selected ? 48.0 : 40.0;
+    final size = proximo ? 52.0 : selected ? 48.0 : 40.0;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Anel pulsante ao redor da próxima árvore
-        if (proxima)
+        // Anel pulsante ao redor do próximo ponto
+        if (proximo)
           Container(
             width: size + 12,
             height: size + 12,
@@ -678,29 +681,31 @@ class _ArvoreMarker extends StatelessWidget {
               ),
             ),
             child: Center(
-              child: _ArvoreIcone(
+              child: _PontoIcone(
                 posicao: posicao,
-                visitada: visitada,
-                proxima: proxima,
+                tipo: tipo,
+                visitado: visitado,
+                proximo: proximo,
                 size: size,
                 selected: selected,
               ),
             ),
           )
         else
-          _ArvoreIcone(
+          _PontoIcone(
             posicao: posicao,
-            visitada: visitada,
-            proxima: proxima,
+            tipo: tipo,
+            visitado: visitado,
+            proximo: proximo,
             size: size,
             selected: selected,
           ),
         CustomPaint(
           size: const Size(10, 7),
           painter: _PinTailPainter(
-            color: visitada
+            color: visitado
                 ? const Color(0xFF2E7D32)
-                : proxima
+                : proximo
                     ? Colors.orange.shade600
                     : Colors.grey.shade400,
           ),
@@ -711,36 +716,41 @@ class _ArvoreMarker extends StatelessWidget {
 }
 
 // ── Ícone vetorial ──────────────────────────────────────────────
-class _ArvoreIcone extends StatelessWidget {
+class _PontoIcone extends StatelessWidget {
   final int posicao;
-  final bool visitada;
-  final bool proxima;
+  final String tipo;
+  final bool visitado;
+  final bool proximo;
   final double size;
   final bool selected;
 
-  const _ArvoreIcone({
+  const _PontoIcone({
     required this.posicao,
-    required this.visitada,
-    required this.proxima,
+    required this.tipo,
+    required this.visitado,
+    required this.proximo,
     required this.size,
     this.selected = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = visitada
+    final bgColor = visitado
         ? const Color(0xFF2E7D32)
-        : proxima
+        : proximo
             ? Colors.orange.shade600
             : Colors.grey.shade400;
 
     final borderColor = selected
         ? Colors.white
-        : visitada
+        : visitado
             ? const Color(0xFF1B5E20)
-            : proxima
+            : proximo
                 ? Colors.orange.shade800
                 : Colors.grey.shade600;
+
+    final iconeTipo =
+        tipo == 'predio_historico' ? Icons.account_balance : Icons.park;
 
     return Container(
       width: size,
@@ -762,9 +772,9 @@ class _ArvoreIcone extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Icon(
-            Icons.park,
+            iconeTipo,
             color: Colors.white
-                .withOpacity(visitada || proxima ? 1.0 : 0.7),
+                .withOpacity(visitado || proximo ? 1.0 : 0.7),
             size: size * 0.52,
           ),
           Positioned(
@@ -783,9 +793,9 @@ class _ArvoreIcone extends StatelessWidget {
                   style: TextStyle(
                     fontSize: size * 0.18,
                     fontWeight: FontWeight.w800,
-                    color: visitada
+                    color: visitado
                         ? const Color(0xFF2E7D32)
-                        : proxima
+                        : proximo
                             ? Colors.orange.shade800
                             : Colors.grey.shade600,
                   ),

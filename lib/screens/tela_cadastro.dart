@@ -47,7 +47,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
       nome: _nomeCtrl.text.trim(),
       idade: idadeInt,
       anoEscolar: _anoCtrl.text.trim(),
-      numArvoresVisitadas: 0,
+      numPontosVisitados: 0,
     );
 
     try {

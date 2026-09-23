@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mime/mime.dart';
 
 import '../models/trilha.dart';
-import '../models/arvore.dart';
+import '../models/ponto_interesse.dart';
+import '../models/imagem.dart';
 import '../models/pergunta.dart';
 import '../models/usuario.dart';
 import '../models/trofeu.dart';
@@ -89,44 +90,71 @@ class ApiClient {
     return data.map((e) => Trilha.fromJson(e as Map<String, dynamic>)).toList();
     }
 
-  // ================== Árvores ==================
-  Future<List<Arvore>> listarArvores({
+  // ================== Pontos de interesse (árvores e prédios históricos) ==================
+  Future<List<PontoInteresse>> listarPontosInteresse({
     required String trilha,
     bool ativas = true,
   }) async {
     final t = await _getToken();
     final r = await _http.get(
-      _u('/api/arvores', {
+      _u('/api/pontos-interesse', {
         'trilha': trilha,
         if (ativas) 'ativas': 'true',
       }),
       headers: _headers(token: t),
     );
-    if (r.statusCode != 200) throw Exception('Falha ao carregar árvores');
+    if (r.statusCode != 200) throw Exception('Falha ao carregar pontos de interesse');
     final data = jsonDecode(r.body) as List;
-    return data.map((e) => Arvore.fromJson(e as Map<String, dynamic>)).toList();
+    return data.map((e) => PontoInteresse.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<Arvore> obterArvore(String trilha, int codigo) async {
+  Future<PontoInteresse> obterPontoInteresse(int codigo) async {
     final t = await _getToken();
-    final r = await _http.get(_u('/api/arvores/$trilha/$codigo'), headers: _headers(token: t));
-    if (r.statusCode != 200) throw Exception('Falha ao carregar dados da árvore');
+    final r = await _http.get(_u('/api/pontos-interesse/$codigo'), headers: _headers(token: t));
+    if (r.statusCode != 200) throw Exception('Falha ao carregar dados do ponto de interesse');
     final data = jsonDecode(r.body) as Map<String, dynamic>;
-    // O endpoint de árvore única não retorna trilha_nome, diferente do de listagem.
-    data['trilha_nome'] ??= trilha;
-    return Arvore.fromJson(data);
+    return PontoInteresse.fromJson(data);
+  }
+
+  Future<int> obterTotalPontosInteresse({String? trilha}) async {
+    final t = await _getToken();
+    final query = <String, String>{
+      'ativas': 'true',
+      if (trilha != null && trilha.isNotEmpty) 'trilha': trilha,
+    };
+    final r = await _http.get(
+      _u('/api/pontos-interesse/total', query),
+      headers: _headers(token: t),
+    );
+
+    if (r.statusCode != 200) {
+      throw Exception('Falha ao buscar total de pontos de interesse');
+    }
+
+    final data = jsonDecode(r.body) as Map<String, dynamic>;
+    return (data['total'] as num).toInt();
+  }
+
+  // ================== Imagens ==================
+  Future<List<Imagem>> listarImagens(int pontoInteresseCodigo) async {
+    final t = await _getToken();
+    final r = await _http.get(
+      _u('/api/pontos-interesse/$pontoInteresseCodigo/imagens'),
+      headers: _headers(token: t),
+    );
+    if (r.statusCode != 200) throw Exception('Falha ao carregar imagens');
+    final data = jsonDecode(r.body) as List;
+    return data.map((e) => Imagem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   // ================== Perguntas ==================
   Future<List<Pergunta>> listarPerguntas({
-    required String trilha,
-    required int arvoreCodigo,
+    required int pontoInteresseCodigo,
   }) async {
     final t = await _getToken();
     final r = await _http.get(
       _u('/api/perguntas', {
-        'trilha': trilha,
-        'arvore': '$arvoreCodigo',
+        'ponto': '$pontoInteresseCodigo',
       }),
       headers: _headers(token: t),
     );
@@ -146,9 +174,9 @@ class ApiClient {
         'nome': u.nome,
         'idade': u.idade,
         'ano_escolar': u.anoEscolar,
-        'num_arvores_visitadas': u.numArvoresVisitadas,
+        'num_pontos_visitados': u.numPontosVisitados,
       }),
-    
+
     );
 
     if (r.statusCode == 409) throw ApiConflictError();
@@ -174,23 +202,23 @@ class ApiClient {
   Future<Uint8List?> fetchAvatarUsuario(String nickname) async {
     final t = await _getToken();
     final r = await _http.get(_u('/api/usuarios/$nickname/avatar'), headers: _headers(token: t));
-    
+
     if (r.statusCode == 200) return r.bodyBytes;
-    if (r.statusCode == 404 || r.statusCode == 204) return null; 
-    
+    if (r.statusCode == 404 || r.statusCode == 204) return null;
+
     throw Exception('Falha ao baixar avatar do usuário (${r.statusCode})');
   }
 
   Future<bool> uploadAvatarUsuario(String nickname, File file) async {
     final t = await _getToken();
     final req = http.MultipartRequest('POST', _u('/api/usuarios/$nickname/avatar'));
-    
+
     final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
-    
+
     req.headers.addAll(_headers(token: t));
     req.files.add(await http.MultipartFile.fromPath('avatar', file.path));
     req.fields['foto_mime'] = mimeType;
-    
+
     final res = await req.send();
     return res.statusCode == 200 || res.statusCode == 204;
   }
@@ -208,33 +236,13 @@ class ApiClient {
     return data.map((e) => Trofeu.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<int> obterTotalArvores({String? trilha}) async {
-    final t = await _getToken();
-    final query = <String, String>{
-      'ativas': 'true',
-      if (trilha != null && trilha.isNotEmpty) 'trilha': trilha,
-    };
-    final r = await _http.get(
-      _u('/api/arvores/total', query),
-      headers: _headers(token: t),
-    ); 
-    
-    if (r.statusCode != 200) {
-      throw Exception('Falha ao buscar total de árvores');
-    }
-    
-    final data = jsonDecode(r.body) as Map<String, dynamic>;
-    return (data['total'] as num).toInt();
-  }
-
-  Future<void> salvarTrofeu(String nickname, String trilhaNome, int arvoreCodigo) async {
+  Future<void> salvarTrofeu(String nickname, int pontoInteresseCodigo) async {
     final t = await _getToken();
     final r = await _http.post(
       _u('/api/usuarios/$nickname/trofeus'),
       headers: _headers(json: true, token: t),
       body: jsonEncode({
-        'trilha_nome': trilhaNome,
-        'arvore_codigo': arvoreCodigo,
+        'ponto_interesse_codigo': pontoInteresseCodigo,
       }),
     );
 
@@ -255,23 +263,22 @@ class ApiClient {
     }
   }
 
-  // ================== Sessão ==================
-  Future<void> sair() async {
-    final p = await _prefs;
-    await p.remove('ultimo_usuario');
-    await clearToken(); 
-  }
-
   Future<void> reiniciarProgressoDaTrilha(
       String nickname, String trilhaNome) async {
     final t = await _getToken();
     final r = await _http.delete(
-      _u('/api/usuarios/$nickname/trofeus',
-          {'trilha_nome': trilhaNome}),
+      _u('/api/usuarios/$nickname/trofeus', {'trilha': trilhaNome}),
       headers: _headers(token: t),
     );
     if (r.statusCode != 204) {
       throw Exception('Falha ao reiniciar progresso da trilha');
     }
+  }
+
+  // ================== Sessão ==================
+  Future<void> sair() async {
+    final p = await _prefs;
+    await p.remove('ultimo_usuario');
+    await clearToken();
   }
 }

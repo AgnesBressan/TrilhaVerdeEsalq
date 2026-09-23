@@ -19,7 +19,6 @@ class _TelaQuizState extends State<TelaQuiz> {
     'B': Color(0xFFA7C957), // Verde Claro
     'C': Color(0xFFEBA937), // Laranja/Amarelo
     'D': Color(0xFF8B5E3C), // Marrom Escuro
-    'E': Color(0xFFA35E2D), // Marrom Claro
   };
 
   Color _getColorForKey(String key) {
@@ -29,9 +28,10 @@ class _TelaQuizState extends State<TelaQuiz> {
   final _api = ApiClient();
   bool _gotArgs = false;
 
-  Pergunta? _pergunta; 
-  String? _opcaoSelecionadaKey; 
-  bool _isSubmitting = false; 
+  Pergunta? _pergunta;
+  String? _trilha;
+  String? _opcaoSelecionadaKey;
+  bool _isSubmitting = false;
 
   @override
   void didChangeDependencies() {
@@ -42,9 +42,10 @@ class _TelaQuizState extends State<TelaQuiz> {
     final args = (ModalRoute.of(context)?.settings.arguments as Map?) ?? {};
     setState(() {
       _pergunta = args['pergunta'] as Pergunta?;
+      _trilha = args['trilha'] as String?;
     });
   }
-  
+
   Future<void> _onConfirmarResposta() async {
     if (_opcaoSelecionadaKey == null || _isSubmitting || _pergunta == null) return;
 
@@ -58,39 +59,41 @@ class _TelaQuizState extends State<TelaQuiz> {
         final nickname = prefs.getString('ultimo_usuario');
         if (nickname != null) {
           // 1. Salva o troféu
-          await _api.salvarTrofeu(nickname, _pergunta!.trilhaNome, _pergunta!.arvoreCodigo);
-          
-          // 2. Conta os troféus já coletados (para a trilha atual)
-          final trofeus = await _api.listarTrofeus(nickname);
-          final trofeusDaTrilha = trofeus
-              .where((t) => t.trilhaNome == _pergunta!.trilhaNome)
-              .map((t) => t.arvoreCodigo)
-              .toSet();
-          final trofeusColetados = trofeusDaTrilha.length;
-          
-          // 3. OBTÉM O TOTAL DE ÁRVORES ATIVAS (CORREÇÃO CRUCIAL)
-          // Busca APENAS as árvores ATIVAS na trilha para o cálculo do total.
-          final todasArvoresAtivas = await _api.listarArvores(
-            trilha: _pergunta!.trilhaNome, 
-            ativas: true,
-          );
-          final totalArvoresAtivas = todasArvoresAtivas.length;
+          await _api.salvarTrofeu(nickname, _pergunta!.pontoInteresseCodigo);
+
+          bool finalizouTrilha = false;
+          if (_trilha != null) {
+            // 2. Busca os pontos ativos da trilha e os troféus do usuário.
+            // A tabela trofeu não guarda trilha_nome — um ponto pode
+            // pertencer a mais de uma trilha, então a associação é feita
+            // comparando os códigos.
+            final todosPontosAtivos = await _api.listarPontosInteresse(
+              trilha: _trilha!,
+              ativas: true,
+            );
+            final trofeus = await _api.listarTrofeus(nickname);
+
+            final codigosDaTrilha =
+                todosPontosAtivos.map((p) => p.codigo).toSet();
+            final trofeusColetados = trofeus
+                .where((t) => codigosDaTrilha.contains(t.pontoInteresseCodigo))
+                .length;
+            final totalAtivos = todosPontosAtivos.length;
+
+            finalizouTrilha =
+                totalAtivos > 0 && trofeusColetados >= totalAtivos;
+          }
 
           if (!mounted) return;
 
-          // 4. VERIFICA FINALIZAÇÃO: Compara os coletados com o total de ativas
-          final finalizouTrilha =
-              totalArvoresAtivas > 0 && trofeusColetados >= totalArvoresAtivas;
-
-          // 5. NAVEGAÇÃO CONDICIONAL
+          // 3. NAVEGAÇÃO CONDICIONAL
           final targetRoute = finalizouTrilha ? '/ganhou' : '/acertou';
-          
+
           Navigator.pushReplacementNamed(
             context,
-            targetRoute, 
-            // Argumentos para /ganhou ou /acertou
-            arguments: finalizouTrilha 
-                      ? {'autoReset': true} 
+            targetRoute,
+            arguments: finalizouTrilha
+                      ? {'autoReset': true}
                       : {'finalizou': false},
           );
         }
@@ -100,7 +103,7 @@ class _TelaQuizState extends State<TelaQuiz> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => TelaErrou(pergunta: _pergunta!),
+            builder: (context) => TelaErrou(pergunta: _pergunta!, trilha: _trilha),
           ),
         );
       }
@@ -119,11 +122,10 @@ class _TelaQuizState extends State<TelaQuiz> {
     if (p.itemB != null && p.itemB!.isNotEmpty) options.add(_OpcaoData('B', p.itemB!));
     if (p.itemC != null && p.itemC!.isNotEmpty) options.add(_OpcaoData('C', p.itemC!));
     if (p.itemD != null && p.itemD!.isNotEmpty) options.add(_OpcaoData('D', p.itemD!));
-    if (p.itemE != null && p.itemE!.isNotEmpty) options.add(_OpcaoData('E', p.itemE!));
 
     return options.map((op) {
-      final color = _getColorForKey(op.key); 
-      
+      final color = _getColorForKey(op.key);
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 14.0),
         child: _OpcaoTile(
@@ -134,7 +136,7 @@ class _TelaQuizState extends State<TelaQuiz> {
               _opcaoSelecionadaKey = op.key;
             });
           },
-          primaryColor: color, 
+          primaryColor: color,
         ),
       );
     }).toList();
@@ -206,8 +208,8 @@ class _OpcaoTile extends StatelessWidget {
   final String titulo;
   final bool isSelected;
   final VoidCallback onTap;
-  final Color primaryColor; 
-  
+  final Color primaryColor;
+
   const _OpcaoTile({
     required this.titulo,
     required this.isSelected,
@@ -218,7 +220,7 @@ class _OpcaoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = primaryColor;
-    
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),
@@ -229,7 +231,7 @@ class _OpcaoTile extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.37), 
+            color: color.withOpacity(0.37),
             borderRadius: BorderRadius.circular(18),
             border: isSelected ? Border.all(color: color, width: 2.5) : null,
           ),
@@ -241,7 +243,7 @@ class _OpcaoTile extends StatelessWidget {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w800,
               fontSize: 16,
-              color: color, 
+              color: color,
             ),
           ),
         ),

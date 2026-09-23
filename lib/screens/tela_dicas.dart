@@ -5,8 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../services/api_cliente.dart';
-import '../models/arvore.dart';
+import '../models/ponto_interesse.dart';
 import '../models/pergunta.dart';
+import '../models/imagem.dart';
 
 class TelaDicas extends StatefulWidget {
   const TelaDicas({super.key});
@@ -21,14 +22,20 @@ class _TelaDicasState extends State<TelaDicas> {
   PlayerState? _playerState;
 
   String? _trilha;
-  int? _arvoreCodigo;
-  Arvore? _arvore;
+  int? _pontoCodigo;
+  PontoInteresse? _ponto;
+  List<Imagem> _imagens = [];
   Pergunta? _perguntaSelecionada;
   bool _loading = true;
   String? _error;
   bool _gotArgs = false;
   bool _marcandoLida = false;
   bool _finalizouTrilha = false;
+
+  bool get _ehPredio => _ponto?.tipo == 'predio_historico';
+  String get _rotulo => _ehPredio ? 'prédio' : 'árvore';
+  String get _artigo => _ehPredio ? 'o' : 'a';
+  String get _demonstrativo => _ehPredio ? 'este' : 'esta';
 
   @override
   void initState() {
@@ -60,7 +67,7 @@ class _TelaDicasState extends State<TelaDicas> {
 
     final args = (ModalRoute.of(context)?.settings.arguments as Map?) ?? {};
     _trilha = args['trilha'] as String?;
-    _arvoreCodigo = args['arvoreCodigo'] as int?;
+    _pontoCodigo = args['arvoreCodigo'] as int?;
     _load();
   }
 
@@ -71,17 +78,19 @@ class _TelaDicasState extends State<TelaDicas> {
     });
 
     try {
-      if (_trilha == null || _arvoreCodigo == null) {
-        throw Exception('Parâmetros ausentes (trilha/código).');
+      if (_pontoCodigo == null) {
+        throw Exception('Parâmetros ausentes (código do ponto).');
       }
 
       final resultados = await Future.wait([
-        _api.listarPerguntas(trilha: _trilha!, arvoreCodigo: _arvoreCodigo!),
-        _api.obterArvore(_trilha!, _arvoreCodigo!),
+        _api.listarPerguntas(pontoInteresseCodigo: _pontoCodigo!),
+        _api.obterPontoInteresse(_pontoCodigo!),
+        _api.listarImagens(_pontoCodigo!),
       ]);
 
       final perguntas = resultados[0] as List<Pergunta>;
-      final arvore = resultados[1] as Arvore;
+      final ponto = resultados[1] as PontoInteresse;
+      final imagens = resultados[2] as List<Imagem>;
 
       Pergunta? perguntaSorteada;
       if (perguntas.isNotEmpty) {
@@ -90,12 +99,13 @@ class _TelaDicasState extends State<TelaDicas> {
       }
 
       setState(() {
-        _arvore = arvore;
+        _ponto = ponto;
+        _imagens = imagens;
         _perguntaSelecionada = perguntaSorteada;
         _loading = false;
       });
 
-      // Se não tem perguntas, marca como lida automaticamente
+      // Se não tem perguntas, marca como lido automaticamente
       if (perguntaSorteada == null) {
         await _marcarComoLida();
       }
@@ -116,24 +126,26 @@ class _TelaDicasState extends State<TelaDicas> {
       final prefs = await SharedPreferences.getInstance();
       final nickname = prefs.getString('ultimo_usuario');
 
-      if (nickname != null && _trilha != null && _arvoreCodigo != null) {
+      if (nickname != null && _trilha != null && _pontoCodigo != null) {
         // Salva o troféu
-        await _api.salvarTrofeu(nickname, _trilha!, _arvoreCodigo!);
+        await _api.salvarTrofeu(nickname, _pontoCodigo!);
 
-        // Verifica se finalizou a trilha
-        // Busca total de árvores ativas da trilha
-        final todasArvores =
-            await _api.listarArvores(trilha: _trilha!, ativas: true);
+        // Verifica se finalizou a trilha comparando com o total de
+        // pontos ativos dela (a tabela trofeu não guarda trilha_nome —
+        // um ponto pode pertencer a mais de uma trilha).
+        final todosPontos =
+            await _api.listarPontosInteresse(trilha: _trilha!, ativas: true);
         final trofeus = await _api.listarTrofeus(nickname);
 
-        final totalAtivas = todasArvores.length;
-        final totalLidas = trofeus
-            .where((t) => t.trilhaNome == _trilha)
+        final codigosDaTrilha = todosPontos.map((p) => p.codigo).toSet();
+        final totalAtivos = todosPontos.length;
+        final totalLidos = trofeus
+            .where((t) => codigosDaTrilha.contains(t.pontoInteresseCodigo))
             .length;
 
         if (mounted) {
           setState(() {
-            _finalizouTrilha = totalLidas >= totalAtivas;
+            _finalizouTrilha = totalLidos >= totalAtivos;
             _marcandoLida = false;
           });
         }
@@ -169,11 +181,11 @@ class _TelaDicasState extends State<TelaDicas> {
   }
 
   void _abrirGaleria() {
-    final foto = _arvore?.fotoUrl;
-    if (foto == null || foto.trim().isEmpty) {
+    if (_imagens.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Nenhuma foto disponível para esta árvore.')),
+        SnackBar(
+            content:
+                Text('Nenhuma foto disponível para $_demonstrativo $_rotulo.')),
       );
       return;
     }
@@ -181,8 +193,8 @@ class _TelaDicasState extends State<TelaDicas> {
       context,
       '/galeria_arvore',
       arguments: {
-        'foto': foto,
-        'nomeArvore': _arvore?.nome ?? 'Árvore',
+        'imagens': _imagens,
+        'nomePonto': _ponto?.nome ?? 'Ponto de interesse',
       },
     );
   }
@@ -214,8 +226,8 @@ class _TelaDicasState extends State<TelaDicas> {
       );
     }
 
-    final nomeArvore = _arvore?.nome ?? 'Árvore ${_arvoreCodigo ?? ''}';
-    final especie = (_arvore?.especie ?? '').trim();
+    final nomePonto = _ponto?.nome ?? 'Ponto ${_pontoCodigo ?? ''}';
+    final especie = (_ponto?.especie ?? '').trim();
     final temPerguntas = _perguntaSelecionada != null;
 
     return Scaffold(
@@ -228,9 +240,9 @@ class _TelaDicasState extends State<TelaDicas> {
             children: [
               // ── Cabeçalho ──────────────────────────────────
               RichText(
-                text: const TextSpan(
+                text: TextSpan(
                   children: [
-                    TextSpan(
+                    const TextSpan(
                       text: 'Parabéns, ',
                       style: TextStyle(
                         color: AppColors.explorer,
@@ -240,8 +252,8 @@ class _TelaDicasState extends State<TelaDicas> {
                       ),
                     ),
                     TextSpan(
-                      text: 'você leu o QR code da seguinte árvore:',
-                      style: TextStyle(
+                      text: 'você leu o QR code d$_artigo seguinte $_rotulo:',
+                      style: const TextStyle(
                         color: AppColors.explorer,
                         fontWeight: FontWeight.w400,
                         fontFamily: 'Poppins',
@@ -254,7 +266,7 @@ class _TelaDicasState extends State<TelaDicas> {
               const SizedBox(height: 20),
 
               Text(
-                nomeArvore,
+                nomePonto,
                 style: const TextStyle(
                   color: AppColors.preparedText,
                   fontSize: 32,
@@ -304,10 +316,10 @@ class _TelaDicasState extends State<TelaDicas> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // ── texto do balão sempre igual ──
-                            const Text(
-                              'Vamos conhecer um pouco\nmais sobre a árvore?',
+                            Text(
+                              'Vamos conhecer um pouco\nmais sobre $_artigo $_rotulo?',
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: AppColors.loginBg,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -417,6 +429,7 @@ class _TelaDicasState extends State<TelaDicas> {
                         '/quiz',
                         arguments: {
                           'pergunta': _perguntaSelecionada!,
+                          'trilha': _trilha,
                         },
                       );
                     },
@@ -442,10 +455,10 @@ class _TelaDicasState extends State<TelaDicas> {
                       Icon(Icons.check_circle_outline,
                           color: Colors.green.shade600, size: 22),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Árvore registrada com sucesso!\nContinue explorando a trilha.',
-                          style: TextStyle(
+                          '${_rotulo[0].toUpperCase()}${_rotulo.substring(1)} registrad${_ehPredio ? 'o' : 'a'} com sucesso!\nContinue explorando a trilha.',
+                          style: const TextStyle(
                             fontSize: 14.5,
                             height: 1.45,
                             color: Color(0xFF4B4B4B),

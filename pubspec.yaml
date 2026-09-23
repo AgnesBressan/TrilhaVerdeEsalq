@@ -14,9 +14,6 @@ dependencies:
   shared_preferences: ^2.2.3
   image_picker: ^1.1.2
   mime: ^1.0.5
-  qr_code_scanner:
-    git:
-      url: https://github.com/juliuscanute/qr_code_scanner.git
   mobile_scanner: ^3.5.2
   cupertino_icons: ^1.0.8
   percent_indicator: ^4.2.2
