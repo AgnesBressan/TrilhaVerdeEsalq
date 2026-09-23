@@ -134,7 +134,9 @@ class _TelaDicasState extends State<TelaDicas> {
         // pontos ativos dela (a tabela trofeu não guarda trilha_nome —
         // um ponto pode pertencer a mais de uma trilha).
         final todosPontos =
-            await _api.listarPontosInteresse(trilha: _trilha!, ativas: true);
+            (await _api.listarPontosInteresse(trilha: _trilha!, ativas: true))
+                .where((p) => p.temCoordenadas)
+                .toList();
         final trofeus = await _api.listarTrofeus(nickname);
 
         final codigosDaTrilha = todosPontos.map((p) => p.codigo).toSet();
@@ -145,7 +147,7 @@ class _TelaDicasState extends State<TelaDicas> {
 
         if (mounted) {
           setState(() {
-            _finalizouTrilha = totalLidos >= totalAtivos;
+            _finalizouTrilha = totalAtivos > 0 && totalLidos >= totalAtivos;
             _marcandoLida = false;
           });
         }

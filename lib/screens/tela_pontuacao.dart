@@ -67,7 +67,9 @@ class _TelaPontuacaoState extends State<TelaPontuacao> {
         _api.obterUsuario(nickname),
       ]);
 
-      final pontosDaTrilha = resultados[0] as List<PontoInteresse>;
+      final pontosDaTrilha = (resultados[0] as List<PontoInteresse>)
+          .where((p) => p.temCoordenadas)
+          .toList();
       final todosTrofeus = resultados[1] as List<Trofeu>;
       final usuario = resultados[2] as Usuario?;
 

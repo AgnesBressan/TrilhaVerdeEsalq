@@ -35,6 +35,10 @@ class PontoInteresse {
   bool get isArvore => tipo == 'arvore';
   bool get isPredioHistorico => tipo == 'predio_historico';
 
+  // Só pontos com coordenadas aparecem no mapa — e o QR code só é lido a
+  // partir do mapa. Pontos sem coordenadas não entram na contagem da trilha.
+  bool get temCoordenadas => latitude != null && longitude != null;
+
   static double? _parseDouble(dynamic value) {
     if (value == null) return null;
     if (value is double) return value;

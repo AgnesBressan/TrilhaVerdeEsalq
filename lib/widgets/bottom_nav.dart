@@ -54,28 +54,32 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🚀 ALTERAÇÃO CRUCIAL: Envolver o widget com SafeArea.
-    // O `SafeArea` com `top: false` garante que apenas a parte inferior 
-    // (onde o menu é cortado pela barra virtual do Android) seja respeitada.
-    return SafeArea(
-      top: false, // Não interfere na barra de status superior
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: const BoxDecoration(
-          color: AppColors.panelBg,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
-          ),
+    // O Container (fundo) fica por fora do SafeArea para se estender até a
+    // borda inferior da tela (atrás do home indicator do iPhone e da barra
+    // de navegação do Android). O SafeArea interno mantém só os ícones
+    // dentro da área segura.
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.panelBg,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _item(context, Icons.home_rounded, BottomTab.home),
-            _item(context, Icons.map_rounded, BottomTab.mapa),
-            _item(context, Icons.emoji_events_rounded, BottomTab.pontuacao),
-            _item(context, Icons.person_rounded, BottomTab.perfil),
-          ],
+      ),
+      child: SafeArea(
+        top: false, // Não interfere na barra de status superior
+        minimum: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _item(context, Icons.home_rounded, BottomTab.home),
+              _item(context, Icons.map_rounded, BottomTab.mapa),
+              _item(context, Icons.emoji_events_rounded, BottomTab.pontuacao),
+              _item(context, Icons.person_rounded, BottomTab.perfil),
+            ],
+          ),
         ),
       ),
     );

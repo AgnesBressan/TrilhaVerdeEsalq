@@ -7,8 +7,6 @@ import '../widgets/home_action_button.dart';
 import '../models/usuario.dart';
 import '../services/api_cliente.dart';
 
-class ApiConflictError implements Exception {} 
-
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
 

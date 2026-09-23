@@ -81,15 +81,15 @@ class TelaTutorial extends StatelessWidget {
                     ),
                     _TutorialStep(
                       num: 2,
-                      titulo: 'Selecionar árvore',
+                      titulo: 'Selecionar ponto',
                       texto:
-                          'Veja qual a sua próxima árvore e clique nela para ler o QR Code.',
+                          'Veja qual o seu próximo ponto da trilha e clique nele para ler o QR Code.',
                     ),
                     _TutorialStep(
                       num: 3,
                       titulo: 'Ler QR Code',
                       texto:
-                          'Leia o QR Code da árvore com a câmera e aprenda mais sobre ela para responder à pergunta.',
+                          'Leia o QR Code do ponto com a câmera e aprenda mais sobre ele para responder à pergunta.',
                     ),
                     _TutorialStep(
                       num: 4,
@@ -101,13 +101,13 @@ class TelaTutorial extends StatelessWidget {
                       num: 5,
                       titulo: 'Ganhe troféus',
                       texto:
-                          'Visitando árvores e acertando suas perguntas você acumula troféus na área de pontuação.',
+                          'Visitando os pontos da trilha e acertando suas perguntas você acumula troféus na área de pontuação.',
                     ),
                     _TutorialStep(
                       num: 6,
                       titulo: 'Percorra toda a trilha',
                       texto:
-                          'Visite todas as árvores da trilha e ganhe o jogo.',
+                          'Visite todos os pontos da trilha e ganhe o jogo.',
                     ),
                   ],
                 ),

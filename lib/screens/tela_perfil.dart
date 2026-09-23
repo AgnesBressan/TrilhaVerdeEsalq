@@ -45,7 +45,7 @@ class _TelaPerfilState extends State<TelaPerfil> {
       final nickname = prefs.getString('ultimo_usuario');
 
       if (nickname == null) {
-        // Se não houver usuário logado, volta para o login
+        // Se não houver usuário logado, volta para a tela de login/cadastro
         _sair();
         return;
       }
@@ -107,8 +107,8 @@ class _TelaPerfilState extends State<TelaPerfil> {
   Future<void> _sair() async {
     await _api.sair(); // Limpa os dados locais
     if (!mounted) return;
-    // Navega para a tela de login e remove todas as telas anteriores da pilha
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    // Navega para a tela com login/cadastro e remove todas as telas anteriores da pilha
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
   @override

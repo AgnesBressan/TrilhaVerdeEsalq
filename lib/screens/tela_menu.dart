@@ -15,8 +15,8 @@ class _TelaMenuState extends State<TelaMenu> { // [NOVO] Classe de estado
   Future<void> _onSair() async {
     await _api.sair(); // Limpa os dados da sessão (SharedPreferences)
     if (mounted) {
-      // Navega para o login e remove todas as telas anteriores
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      // Navega para a tela com login/cadastro e remove todas as telas anteriores
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
   }
 

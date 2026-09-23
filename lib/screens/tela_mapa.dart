@@ -87,25 +87,23 @@ class _TelaMapaState extends State<TelaMapa> {
       final todosPontos = resultados[0] as List<PontoInteresse>;
       final trofeus = resultados[1] as List<Trofeu>;
 
-      // Ordena todos os ativos pelo campo ordem
-      final ativosOrdenados = List<PontoInteresse>.from(todosPontos)
+      // Só os que têm coordenadas fazem parte da trilha jogável,
+      // ordenados pelo campo ordem
+      final comCoordenadas = todosPontos
+          .where((p) => p.temCoordenadas)
+          .toList()
         ..sort((a, b) => a.ordem.compareTo(b.ordem));
 
       // Monta posição relativa: codigo -> 1, 2, 3...
       final posicao = <int, int>{};
-      for (int i = 0; i < ativosOrdenados.length; i++) {
-        posicao[ativosOrdenados[i].codigo] = i + 1;
+      for (int i = 0; i < comCoordenadas.length; i++) {
+        posicao[comCoordenadas[i].codigo] = i + 1;
       }
 
-      // Filtra só os que têm coordenadas
-      final comCoordenadas = ativosOrdenados
-          .where((p) => p.latitude != null && p.longitude != null)
-          .toList();
-
       // Um troféu pertence à trilha se o ponto que ele referencia está
-      // na lista de pontos ativos dessa trilha (a tabela trofeu não guarda
+      // na lista de pontos da trilha (a tabela trofeu não guarda
       // trilha_nome — um ponto pode pertencer a mais de uma trilha).
-      final codigosDaTrilha = ativosOrdenados.map((p) => p.codigo).toSet();
+      final codigosDaTrilha = comCoordenadas.map((p) => p.codigo).toSet();
       final visitados = trofeus
           .where((t) => codigosDaTrilha.contains(t.pontoInteresseCodigo))
           .map((t) => t.pontoInteresseCodigo)

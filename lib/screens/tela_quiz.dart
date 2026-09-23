@@ -67,10 +67,12 @@ class _TelaQuizState extends State<TelaQuiz> {
             // A tabela trofeu não guarda trilha_nome — um ponto pode
             // pertencer a mais de uma trilha, então a associação é feita
             // comparando os códigos.
-            final todosPontosAtivos = await _api.listarPontosInteresse(
+            final todosPontosAtivos = (await _api.listarPontosInteresse(
               trilha: _trilha!,
               ativas: true,
-            );
+            ))
+                .where((p) => p.temCoordenadas)
+                .toList();
             final trofeus = await _api.listarTrofeus(nickname);
 
             final codigosDaTrilha =
