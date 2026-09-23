@@ -229,6 +229,8 @@ class _TelaDicasState extends State<TelaDicas> {
     final nomePonto = _ponto?.nome ?? 'Ponto ${_pontoCodigo ?? ''}';
     final especie = (_ponto?.especie ?? '').trim();
     final temPerguntas = _perguntaSelecionada != null;
+    final temAudio =
+        (_perguntaSelecionada?.audioUrl ?? '').trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -385,7 +387,8 @@ class _TelaDicasState extends State<TelaDicas> {
 
                 const SizedBox(height: 30),
 
-                // Player de áudio
+                // Player de áudio — só aparece se a pergunta tiver audio_url
+                if (temAudio) ...[
                 Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -418,6 +421,7 @@ class _TelaDicasState extends State<TelaDicas> {
                 ),
 
                 const SizedBox(height: 24),
+                ],
 
                 Center(
                   child: AppButton(

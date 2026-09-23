@@ -46,6 +46,8 @@ class _TelaErrouState extends State<TelaErrou> {
   }
 
   Future<void> _toggleAudioPlayback() async {
+    const baseUrl = 'http://200.144.255.186:3001';
+
     final audioDicaUrl = widget.pergunta.audioDicaUrl;
 
     if (audioDicaUrl == null || audioDicaUrl.isEmpty) {
@@ -58,7 +60,9 @@ class _TelaErrouState extends State<TelaErrou> {
     if (_playerState == PlayerState.playing) {
       await player.pause();
     } else {
-      await player.play(UrlSource(audioDicaUrl));
+      final finalUrl =
+          audioDicaUrl.startsWith('http') ? audioDicaUrl : baseUrl + audioDicaUrl;
+      await player.play(UrlSource(finalUrl));
     }
   }
 
@@ -70,6 +74,8 @@ class _TelaErrouState extends State<TelaErrou> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final dicaTexto = widget.pergunta.dica ?? 'Nenhuma dica disponível.'; // Puxa o campo 'dica'
+    final temAudioDica =
+        (widget.pergunta.audioDicaUrl ?? '').trim().isNotEmpty;
     
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -143,7 +149,8 @@ class _TelaErrouState extends State<TelaErrou> {
                     ),
                     const SizedBox(height: 25),
 
-
+                    // Player de áudio — só aparece se a pergunta tiver audio_dica_url
+                    if (temAudioDica) ...[
                     Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -171,6 +178,7 @@ class _TelaErrouState extends State<TelaErrou> {
                     ),
 
                     const SizedBox(height: 20),
+                    ],
 
                     AppButton(
                       label: 'TENTAR NOVAMENTE',
